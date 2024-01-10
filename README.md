@@ -88,8 +88,7 @@ If I'm being perfectly honest I don't really know what I'm doing and this is the
 
 ## Plans
 
-There is a lot of stuff I want to add, but I only have so much time, so I'll add some of this stuff as best I can. This isn't a hard and fast order I intend to add stuff, but here is the stuff I want to add:
-
+There is a lot of stuff I want to add, but I only have so much time, so I'll add some of this stuff as best I can. This isn't a hard and fast order I intend to add stuff, but here is the stuff I want to add.
     -Data builder for crew. Writers, Directors, DoP etc.
         -Given director, writer, producer etc, ask openai for 20 similar or related directors along with and gather their info and all the info for all their movies and actors in those movies
     -Fix popovers not working when waiting on OpenAI response
