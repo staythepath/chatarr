@@ -30,7 +30,7 @@ Alternatively you can clone the repo:
 git clone https://github.com/staythepath/chatarr.git
 ```
 
-then go to the folder:
+Then go to the folder:
 
 ```
 cd chatarr
