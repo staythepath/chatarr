@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <link
+      rel="icon"
+      type="image/png"
+      href="https://github.com/staythepath/moviechat/blob/main/icon128.png?raw=true"
+    />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@300&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.bundle.min.js"></script>
+    <link
+      rel="stylesheet"
+      type="text/css"
+      href="{{ url_for('static', filename='../static/css/styles.css') }}"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>MovieChat</title>
+  </head>
+  <body>
+    <div id="config-panel">
+      <div>
+        <h2 class="mt-4">Config</h2>
+
+        <form method="POST">
+          <div class="form-group">
+            <label for="openai_api_key">OpenAI API Key:</label>
+            <input
+              type="text"
+              class="form-control"
+              name="openai_api_key"
+              id="openai_api_key"
+              value="{{ config['openai_api_key'] }}"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="radarr_api_key">Radarr API Key:</label>
+            <input
+              type="text"
+              class="form-control"
+              name="radarr_api_key"
+              id="radarr_api_key"
+              value="{{ config['radarr_api_key'] }}"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="radarr_url">Radarr URL:</label>
+            <input
+              type="text"
+              class="form-control"
+              name="radarr_url"
+              id="radarr_url"
+              value="{{ config['radarr_url'] }}"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="radarr_quality">Radarr Quality:</label>
+            <input
+              type="text"
+              class="form-control"
+              name="radarr_quality"
+              value="{{ config['radarr_quality'] }}"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="tmdb_api_key">TMDB API Key:</label>
+            <input
+              type="text"
+              class="form-control"
+              name="tmdb_api_key"
+              value="{{ config['tmdb_api_key'] }}"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="selected_model">Model:</label>
+            <select class="form-control" name="selected_model">
+              <option value="gpt-3.5-turbo-1106">gpt-3.5-turbo-1106</option>
+              <option value="gpt-4-1106-preview">gpt-4-1106-preview</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="radarrRootFolder">Radarr Root Folder:</label>
+            <select
+              class="form-control"
+              name="radarr_root_folder"
+              id="radarrRootFolder"
+            >
+              <option disabled selected>Refresh to get paths...</option>
+            </select>
+            <button
+              id="refresh-button"
+              type="button"
+              class="btn btn-primary mt-2"
+            >
+              Refresh Root Folders
+            </button>
+          </div>
+          <br />
+          <div class="form-group">
+            <input
+              type="submit"
+              class="btn btn-primary"
+              value="Save and Reload"
+            />
+          </div>
+
+          <h2 class="mt-4">Discord Config</h2>
+          <div class="form-group custom-control custom-checkbox">
+            <input type="checkbox" class="custom-control-input"
+            id="start_discord_bot_on_launch" name="start_discord_bot_on_launch"
+            {{ 'checked' if config['start_discord_bot_on_launch'] else '' }}>
+            <label
+              class="custom-control-label"
+              for="start_discord_bot_on_launch"
+              >Start Discord Bot</label
+            >
+          </div>
+
+          <div class="form-group">
+            <label for="discord_token">Discord Token:</label>
+            <input
+              type="text"
+              class="form-control"
+              name="discord_token"
+              id="discord_token"
+              value="{{ config['discord_token'] }}"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="discord_channel">Discord Channel:</label>
+            <select
+              class="form-control"
+              id="discord_channel"
+              name="discord_channel"
+              disabled
+            >
+              <!-- Options... -->
+            </select>
+
+            <div class="form-group"></div>
+            <button
+              id="refresh-channels-button"
+              type="button"
+              class="btn btn-primary mt-2"
+            >
+              Refresh Channels
+            </button>
+          </div>
+          <br />
+          <div class="form-group">
+            <input
+              type="submit"
+              class="btn btn-primary"
+              value="Save and Reload"
+            />
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="container my-4" id="main-content">
+      <div class="card">
+        <div class="card-header d-flex align-items-center">
+          <div class="d-flex align-items-center" style="margin-right: auto">
+            <img
+              src="https://github.com/staythepath/chatarr/blob/main/resources/icon128.png?raw=true"
+              alt="MovieBot Icon"
+              class="moviebot-icon"
+              style="margin-right: 10px"
+            />
+            <span>Chatarr</span>
+          </div>
+          <div id="config-toggle" class="config-toggle">
+            <i class="fa fa-cog" aria-hidden="true"></i>
+          </div>
+        </div>
+
+        <div
+          class="card-body"
+          id="chat-box"
+          style="height: 80vh; overflow-y: scroll"
+        >
+          <!-- Chat messages will appear here -->
+        </div>
+        <div class="card-footer d-flex align-items-center">
+          <input
+            type="text"
+            id="message-input"
+            class="form-control"
+            placeholder="Type a message..."
+          />
+
+          <button id="send-message-btn" class="btn btn-primary ml-2">
+            <i class="fa fa-paper-plane"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="static/js/main.js"></script>
+  </body>
+</html>

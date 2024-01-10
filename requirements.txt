@@ -1,0 +1,9 @@
+discord.py
+openai
+tmdbv3api
+arrapi
+regex
+pyyaml
+flask
+gunicorn
+imdbpy

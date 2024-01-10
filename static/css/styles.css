@@ -1,0 +1,613 @@
+/* General Settings */
+body {
+  background-color: #1a1a1a;
+  color: #f8f8f8;
+  margin: 0;
+  padding: 0;
+  font-family: "Roboto", sans-serif;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Utility and Responsive Classes */
+@media (max-width: 768px) {
+  #config-panel {
+    width: 100%;
+    left: -300px;
+    transition: left 0.5s ease-in-out; /* Adjust the duration (0.5s) as needed */
+  }
+  #main-content.margin-apply {
+    margin-left: 0;
+  }
+  body {
+    font-size: 1.1em;
+  }
+  .btn {
+    padding: 10px 20px;
+    font-size: 1em;
+  }
+  input,
+  select,
+  textarea {
+    font-size: 0.5em;
+  }
+  #main-content {
+    height: calc(100vh - 56px);
+  }
+  #chat-box {
+    height: calc(100% - 20px);
+  }
+}
+
+/* Layout and Components */
+#config-panel,
+#main-content {
+  transition: margin-left 0.5s;
+}
+
+#config-panel {
+  position: fixed;
+  top: 0;
+  left: -250px; /* Hidden initially */
+  width: 250px;
+  height: 100vh;
+  overflow-x: hidden;
+  background-color: #333333;
+  padding: 20px;
+  z-index: 2;
+  color: #f8f8f8;
+  transition: left 0.5s ease-in-out; /* Smooth transition for the 'left' property */
+}
+
+.hidden-name {
+  display: none;
+}
+
+#main-content {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+/* Chat UI */
+.card {
+  background-color: #2a2a2a;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  border-radius: 10px !important;
+}
+
+.card-header {
+  background-color: #27496d;
+  color: #f8f8f8;
+  font-size: 18px;
+  font-weight: bolder;
+  border-top-left-radius: 10px !important;
+  border-top-right-radius: 10px !important;
+}
+
+.card-body,
+.card-footer {
+  padding: 10px;
+}
+
+#chat-box {
+  height: calc(100% - 60px);
+  overflow-y: auto;
+  flex-grow: 1;
+  border-radius: 20px !important;
+}
+
+/* Popover */
+.popover {
+  /*left: 55px !important;
+  top: 3px !important; */
+  max-width: 600px;
+  width: auto;
+  background-color: #2a2a2a;
+  border-color: #27496d;
+  border-radius: 7px;
+  border-width: 1px;
+  z-index: 1000;
+}
+
+.popover-body {
+  padding: 0;
+  color: #27496d;
+}
+
+@keyframes colorTransition {
+  0%,
+  100% {
+    color: #0056b3;
+  }
+  50% {
+    color: #2666ac;
+  }
+}
+
+.color-transition {
+  animation: colorTransition 0.7s infinite;
+}
+
+/* Customize the popover header */
+.popover-header {
+  background-color: #2a2a2a; /* Change to your desired background color */
+  color: #f8f8f8; /* Change to your desired text color */
+  font-weight: bold; /* Add additional styling as needed */
+  display: none;
+  padding: 0;
+}
+
+/* Arrow color for bottom popovers */
+.popover.bs-popover-bottom .arrow::after,
+.popover.bs-popover-auto[x-placement^="bottom"] .arrow::after {
+  border-bottom-color: #27496d; /* This should match the popover header color */
+}
+
+/* Arrow color for top popovers */
+.popover.bs-popover-top .arrow::after,
+.popover.bs-popover-auto[x-placement^="top"] .arrow::after {
+  border-top-color: #27496d; /* This should match the popover header color */
+}
+
+/* Arrow color for right popovers */
+.popover.bs-popover-right .arrow::after,
+.popover.bs-popover-auto[x-placement^="right"] .arrow::after {
+  border-right-color: #27496d; /* This should match the popover header color */
+}
+
+/* Arrow color for left popovers */
+.popover.bs-popover-left .arrow::after,
+.popover.bs-popover-auto[x-placement^="left"] .arrow::after {
+  border-left-color: #27496d; /* This should match the popover header color */
+}
+
+.loading-animation {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: #fff;
+  animation: spin 1s ease-in-out infinite;
+  -webkit-animation: spin 1s ease-in-out infinite;
+
+  margin-top: 5px !important;
+}
+
+@keyframes spin {
+  to {
+    -webkit-transform: rotate(360deg);
+  }
+}
+
+.loading-text {
+  margin-left: 10px;
+  color: #fff;
+}
+
+.moviebot-icon {
+  width: 30px; /* Adjust the width as needed */
+  height: auto; /* This ensures the aspect ratio is maintained */
+}
+
+.movie-title {
+  font-size: 18px; /* Adjust the font size as needed */
+  font-weight: bold;
+  text-align: center;
+  background-color: #27496d; /* Match the background color */
+  color: #fff; /* Match the text color */
+  padding: 8px 15px; /* Add padding as needed */
+  white-space: nowrap; /* Prevent text wrapping */
+  border-top-left-radius: 8px; /* Rounded corners to match the card */
+  border-top-right-radius: 8px;
+}
+
+.movie-details-card {
+  /* background-color: orange !important; */
+  display: flex; /* Add this */
+  align-items: center; /* Center vertically */
+  background-color: #2a2a2a;
+  color: #fff;
+  padding-bottom: 10px;
+  padding-right: 15px;
+  padding-top: 10px;
+  padding-left: 5px;
+  font-size: 14px;
+  font-family: "Roboto", sans-serif;
+  max-width: 600px;
+  max-height: max-content;
+
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+}
+
+.movie-info {
+  flex-grow: 1;
+  width: 100%;
+  /* background-color: red !important; */
+  max-height: 500px;
+  overflow-y: scroll;
+  margin-bottom: 10px;
+  margin-right: 8px;
+  padding-right: 17px;
+  border-radius: 10px;
+}
+
+.movie-div {
+  /* background-color: purple !important; */
+  display: flex;
+  flex-direction: column;
+  align-items: left;
+  justify-content: left;
+  max-height: 600px;
+  padding-bottom: 0px !important;
+  margin-bottom: 0px;
+}
+
+.buttons {
+  display: flex;
+  justify-content: right;
+  align-items: right;
+  margin: 10px;
+  margin-right: 10px;
+  width: 100%;
+  margin-left: 0px;
+  /* background-color: gray; */
+  padding-left: 8px;
+  margin-right: 200px !important;
+}
+
+.movie-buttons {
+  display: flex;
+  justify-content: right;
+  align-items: right;
+  margin: 10px;
+  width: 100%;
+  margin-left: 0px;
+  /* background-color: gray; */
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.movie-poster {
+  flex-shrink: 0;
+  margin-right: 10px;
+  width: 35%;
+  display: flex; /* Add this */
+  justify-content: center; /* Center horizontally */
+  align-items: center; /* Center vertically */
+}
+
+.movie-poster img {
+  width: 100%;
+  height: auto;
+  border: 1px solid #27496d;
+}
+
+.movie-info h5 {
+  margin: 0 0 10px 0;
+  font-size: 16px;
+}
+
+.movie-info p {
+  margin: 5px 0;
+  font-size: 14px;
+}
+
+.movie-info ul li {
+  text-indent: 0;
+  padding-left: 0;
+}
+
+.credits-list {
+  list-style-type: none; /* Remove bullet points */
+  padding-left: 0; /* Remove default padding */
+}
+
+.credits-list li {
+  margin-left: 0; /* Align with the 'Movie Credits:' label */
+}
+
+.movie-credit-link {
+  color: #596a7c !important; /* Example: making the text color blue */
+  text-decoration: underline !important; /* Example: removing underline to indicate it's a link */
+  cursor: pointer; /* Changes the cursor to a hand icon when hovering */
+  /* Add other styles as needed */
+}
+
+.movie-credit-link:hover {
+  color: #0056b3 !important; /* Example: change color on hover */
+  /* Add other hover styles as needed */
+}
+
+.movie-credit-link.clicked-style {
+  font-weight: bold !important;
+  color: #0056b3 !important;
+  text-decoration: underline !important;
+}
+
+dl {
+  margin: 0;
+  margin-top: 1px;
+  margin-bottom: 1px;
+}
+
+dt {
+  font-weight: bold; /* Make the term bold */
+  color: #f8f8f8; /* Give the term a dark color */
+  margin-bottom: 1px; /* Space between the term and its description */
+  display: inline-block;
+}
+
+dd {
+  line-height: 1.2; /* Adjust this value to increase or decrease line spacing */
+  margin-bottom: 4px; /* Adjust this value to increase or decrease space between entries */
+  margin-left: 0; /* Ensure descriptions align with the terms */
+  margin-top: 1px; /* Space between descriptions */
+  padding-left: 15px; /* Add some padding to offset descriptions from the terms */
+}
+
+/* Scrollbar Customization for WebKit (Chrome, Safari) */
+::-webkit-scrollbar {
+  width: 3px; /* Adjust the width of the scrollbar */
+}
+
+::-webkit-scrollbar-track {
+  display: none; /* Background of the scrollbar track */
+}
+
+::-webkit-scrollbar-thumb {
+  background: #888; /* Color of the scrollbar thumb */
+  border-radius: 4px; /* Rounded corners of the scrollbar thumb */
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555; /* Color of the scrollbar thumb when hovered */
+}
+
+/* Scrollbar Customization */
+#chat-box::-webkit-scrollbar,
+#config-panel::-webkit-scrollbar {
+  width: 8px;
+}
+
+#chat-box::-webkit-scrollbar-thumb,
+#config-panel::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+#chat-box::-webkit-scrollbar-thumb:hover,
+#config-panel::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+#config-panel::-webkit-scrollbar-track {
+  background: #2a2a2a;
+}
+
+/* Form and Button Styles */
+input[type="text"],
+input[type="password"],
+textarea,
+select {
+  background-color: #333333;
+  border: 1px solid #596a7c;
+  color: #f8f8f8;
+  padding: 5px;
+}
+
+input[type="text"]:focus,
+input[type="password"]:focus,
+textarea:focus,
+select:focus {
+  background-color: #333333;
+  border: 1px solid #596a7c;
+  color: #f8f8f8;
+  padding: 5px;
+}
+
+::placeholder {
+  color: #888888;
+}
+
+select option {
+  background-color: #333333;
+  color: #f8f8f8;
+}
+
+.btn-primary {
+  background-color: #27496d;
+  border-color: #27496d;
+  color: #f8f8f8;
+  margin: 5px;
+}
+
+.btn-primary:hover {
+  background-color: #1d3c5a;
+  border-color: #1d3c5a;
+}
+
+.popover-button {
+  background-color: #27496d;
+  border-color: #27496d;
+  color: #f8f8f8;
+  margin: 3px;
+  padding: 7px 6px; /* Smaller padding */
+  font-size: 1em; /* Smaller font size */
+  border-radius: 4px; /* Smaller border radius */
+}
+
+.popover-button:hover {
+  background-color: #1d3c5a;
+  border-color: #1d3c5a;
+  color: #f8f8f8;
+}
+
+select.form-control {
+  background-color: #333333;
+  border: 1px solid #596a7c;
+  color: #f8f8f8;
+}
+
+select.form-control option {
+  background-color: #333333;
+  border: 1px solid #596a7c;
+  color: #f8f8f8;
+}
+
+select.form-control:focus {
+  background-color: #333333;
+  border: 1px solid #596a7c;
+  color: #f8f8f8;
+}
+
+/* Misc */
+.config-toggle {
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.movie-link {
+  color: #596a7c;
+  cursor: pointer;
+  text-decoration: underline;
+  white-space: nowrap; /* Prevent text wrapping */
+}
+
+.movie-link:hover {
+  color: #0056b3;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.sender-user {
+  color: #3a6ea5;
+  font-weight: bold;
+}
+
+.sender-bot {
+  color: #a89f91;
+  font-weight: bold;
+  padding-right: 5px;
+}
+
+.sender-bot-spacing {
+  margin-right: 5px; /* Adjust the value as needed */
+}
+
+.message {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 5px;
+  line-height: 27px;
+}
+
+.message * {
+  margin: 0;
+  padding: 0;
+  padding-left: 5px;
+}
+
+.custom-checkbox {
+  vertical-align: middle;
+  margin-left: 5px;
+  color: #27496d;
+}
+
+.custom-checkbox .custom-control-input:checked ~ .custom-control-label::before {
+  background-color: #27496d;
+  border-color: #27496d;
+}
+
+.custom-control-label {
+  color: #f8f8f8;
+}
+
+/* Add this to your CSS file */
+.person-link {
+  cursor: pointer;
+  text-decoration: underline;
+  color: #596a7c; /* or any other color that indicates interactivity */
+}
+
+.person-link:hover {
+  cursor: pointer;
+  text-decoration: underline;
+  color: #0056b3; /* or any other color that indicates interactivity */
+}
+
+.more-link {
+  color: #3a6ea5; /* Bootstrap primary blue color */
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.more-link:hover {
+  text-decoration: underline;
+  color: #0056b3;
+  cursor: pointer;
+}
+
+.more-toggle {
+  color: #3a6ea5; /* Bootstrap's default link color */
+  text-decoration: underline;
+  cursor: pointer;
+  padding-left: 5px;
+  display: inline-block;
+}
+
+.more-toggle:hover {
+  color: #0056b3; /* Darker shade for hover effect */
+  text-decoration: none; /* Optional: remove underline on hover */
+}
+
+.person-link,
+.more-toggle {
+  display: inline-block;
+  /* other styles */
+}
+
+.popover #more-stars {
+  display: none;
+  color: #27496d;
+}
+
+.popover #more-writers {
+  display: none;
+  color: #27496d;
+}
+
+.popover #more-director {
+  display: none;
+  color: #27496d;
+}
+
+.popover #more-dop {
+  display: none;
+  color: #27496d;
+}
+
+.person-details-card {
+  display: flex;
+  align-items: start;
+}
+
+.person-poster {
+  flex: 0 0 auto; /* do not grow, do not shrink, auto basis */
+  margin-right: 10px; /* space between image and text */
+}
+
+.person-poster img {
+  width: 100px; /* example width, adjust as needed */
+  height: auto;
+}
+
+.person-info {
+  flex: 1; /* grow to fill space */
+}
