@@ -96,7 +96,7 @@ There is a lot of stuff I want to add, but I only have so much time, so I'll add
 * The second it gets the movie titles, and actors, it need to start the api calls for their data IF it doesnt have it already.
 * Download tracking.
   * Sidebar with current downloads(does this mean downloader integration as well or can this be done through radarr?)
-        The message that indicates it has been "Added to Radarr" Changes to "Downloading *Movie Title* *Pause/Resume button* *Delete* *Progress Bar*" when downloading, then to "Download completed" when it's done
+  * The message that indicates it has been "Added to Radarr" Changes to "Downloading *Movie Title* *Pause/Resume button* *Delete* *Progress Bar*" when downloading, then to "Download completed" when it's done
 * Make the mobile site less sucky
 * Add option to turn off click movie to add
 * Add option to turn off popovers
