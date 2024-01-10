@@ -65,7 +65,7 @@ export function showPersonPopover(element) {
 
           var buttonsHtml = `
               <div style="text-align: right; padding-top: 10px; display: flex; justify-content: flex-end;">
-                <button type="button" class="btn popover-button ask-moviebot-person" data-person-name="${data.name}" style="margin-left: 5px;">Ask MovieBot</button>
+                <button type="button" class="btn popover-button ask-moviebot-person" data-person-name="${data.name}" style="margin-left: 5px;">Ask Chatarr</button>
                 <button type="button" class="btn popover-button btn-imdb-person" data-person-imdb-id="${data.imdb_id}" style="margin-left: 5px;">IMDb</button>
                 <button type="button" class="btn popover-button btn-wiki-person" data-wiki-url="" style="margin-left: 5px;">Wiki</button>
                 
@@ -182,7 +182,7 @@ export function showPersonPopover(element) {
           if (personName) {
             sendPredefinedMessage(`Tell me about ${personName}`);
           } else {
-            console.log("Person name not found for MovieBot");
+            console.log("Person name not found for Chatarr");
           }
         });
 
@@ -216,7 +216,7 @@ export function showPersonPopover(element) {
 
       $popover.find("#more-credits").on("click", function () {
         $(this).css("color", "green"); // Example: changing the color to green
-        $(this).text("Asking MovieBot"); // Temporarily change the link text
+        $(this).text("Asking Chatarr"); // Temporarily change the link text
         var fullCreditsHtml = `${$(element).data("fullCredits")}</dl>`;
         $(this).parent().replaceWith(fullCreditsHtml); // Replace the dd with full credits
         $(this).remove(); // Remove the 'More' link
@@ -227,10 +227,10 @@ export function showPersonPopover(element) {
         var originalText = $(this).text();
 
         // Temporarily change the link text and style to indicate action
-        $(this).text("Asking MovieBot");
+        $(this).text("Asking Chatarr");
         $(this).addClass("clicked-style"); // Add a class to change color and font weight
 
-        // Add your logic here to ask MovieBot about the movie
+        // Add your logic here to ask  Chatrr about the movie
         var movieTitle = $(this).data("movie-title");
 
         // Reset the text and style back to the original after some delay
@@ -295,7 +295,7 @@ export function setupPopoverHideWithDelay(element) {
     var buttonsHtml = `
       <div style="text-align: right; padding-top: 10px; display: flex; justify-content: left;">
         <button type="button" class="btn popover-button add-to-radarr" data-tmdb-id="${data.tmdb_id}">Add to Radarr</button>
-        <button type="button" class="btn popover-button ask-moviebot" data-movie-title="${data.title}">Ask MovieBot</button>
+        <button type="button" class="btn popover-button ask-moviebot" data-movie-title="${data.title}">Ask Chatarr</button>
         <button type="button" class="btn popover-button btn-imdb" data-imdb-id="${data.imdb_id}" style="margin-left: 5px;">IMDb</button>
         <button type="button" class="btn popover-button btn-wiki" data-wiki-url="${data.wiki_url}" style="margin-left: 5px;">Wiki</button>
       </div>`;

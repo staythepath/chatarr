@@ -1,19 +1,19 @@
 <?xml version="1.0"?>
 <Container version="2">
-  <Name>moviechat-bot</Name>
-  <Repository>staythepath/moviechat-bot:latest</Repository>
-  <Registry>https://hub.docker.com/r/staythepath/moviechat-bot</Registry>
+  <Name>chatarr</Name>
+  <Repository>staythepath/chatarr:latest</Repository>
+  <Registry>https://hub.docker.com/r/staythepath/chatarr</Registry>
   <Network>bridge</Network>
   <MyIP/>
   <Shell>sh</Shell>
   <Privileged>false</Privileged>
-  <Support>https://github.com/staythepath/moviechat-bot/issues</Support>
+  <Support>https://github.com/staythepath/chatarr/issues</Support>
   <Project/>
   <Overview>An OpenAI based chatbot with radarr integration. You can talk to the bot about movies and any time it mentions a movie you can click the movie title to add the movie to radarr. If you hover over the title a popover comes up with details about the movie. If you click a persons name a popover comes up with details about the person. The discord bot is sort of functional, but you have to restart the container to get it to stop and you have to save the configuration with the box checked to get it to start. </Overview>
   <Category>MediaApp:Other Other:</Category>
   <WebUI>http://[IP]:[PORT:1138]/</WebUI>
-  <TemplateURL>https://github.com/staythepath/moviechat-bot/template.xml</TemplateURL>
-  <Icon>https://github.com/staythepath/moviechat/blob/main/icon128.png?raw=true</Icon>
+  <TemplateURL>https://github.com/staythepath/chatarr/template.xml</TemplateURL>
+  <Icon>https://github.com/staythepath/chatarr/blob/main/resources/icon128.png?raw=true</Icon>
   <ExtraParams/>
   <PostArgs/>
   <CPUset/>
