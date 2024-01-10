@@ -90,23 +90,23 @@ If I'm being perfectly honest I don't really know what I'm doing and this is the
 
 There is a lot of stuff I want to add, but I only have so much time, so I'll add some of this stuff as best I can. This isn't a hard and fast order I intend to add stuff, but here is the stuff I want to add.
 
-    * Data builder for crew. Writers, Directors, DoP etc.
-        * Given director, writer, producer etc, ask openai for 20 similar or related directors along with and gather their info and all the info for all their movies and actors in those movies
-    * Fix popovers not working when waiting on OpenAI response
-    * The second it gets the movie titles, and actors, it need to start the api calls for their data IF it doesnt have it already.
-    * Download tracking.
-        * Sidebar with current downloads(does this mean downloader integration as well or can this be done through radarr?)
+* Data builder for crew. Writers, Directors, DoP etc.
+  * Given director, writer, producer etc, ask openai for 20 similar or related directors along with and gather their info and all the info for all their movies and actors in those movies
+* Fix popovers not working when waiting on OpenAI response
+* The second it gets the movie titles, and actors, it need to start the api calls for their data IF it doesnt have it already.
+* Download tracking.
+  * Sidebar with current downloads(does this mean downloader integration as well or can this be done through radarr?)
         The message that indicates it has been "Added to Radarr" Changes to "Downloading *Movie Title* *Pause/Resume button* *Delete* *Progress Bar*" when downloading, then to "Download completed" when it's done
-    * Make the mobile site less sucky
-    * Add option to turn off click movie to add
-    * Add option to turn off popovers
-    * Add option to add to radarr but not download
-    * MAYBE add option to edit system prompt. If people mess with it it will probably break functionality
-    * Adjust system prompt
-    * Add stop button when waiting for the OpenAI response to cancel the response
-    * Add option to edit how much chat history is maintained, which will help lower costs if needed
-    * Infinitely nesting popovers instead of the person popover credits just asking Cheddar about the person. This seems like it could be problematic and difficult
-    * Add a sidebar on the right that has movie posters that are related to the movies or actors being discussed Adjust with each message. Clicking the poster gives the movie popover
-    * Fix some people(I think it's non-actors specically) not having the right credits. I feel like John Williams has contributed to more than 4 movies
-    * Chat message indicating that API keys etc have not been set/set properly. Indicate which one is wrong.
-    * Sonnar support
+* Make the mobile site less sucky
+* Add option to turn off click movie to add
+* Add option to turn off popovers
+* Add option to add to radarr but not download
+* MAYBE add option to edit system prompt. If people mess with it it will probably break functionality
+* Adjust system prompt
+* Add stop button when waiting for the OpenAI response to cancel the response
+* Add option to edit how much chat history is maintained, which will help lower costs if needed
+* Infinitely nesting popovers instead of the person popover credits just asking Cheddar about the person. This seems like it could be problematic and difficult
+* Add a sidebar on the right that has movie posters that are related to the movies or actors being discussed Adjust with each message. Clicking the poster gives the movie popover
+* Fix some people(I think it's non-actors specically) not having the right credits. I feel like John Williams has contributed to more than 4 movies
+* Chat message indicating that API keys etc have not been set/set properly. Indicate which one is wrong.
+* Sonnar support
