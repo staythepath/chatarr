@@ -58,6 +58,38 @@ I don't have this in the Community Applications yet, but I hope to get it there 
 
 Then you can simply go to your docker tab and you should have a chatarr template you can choose in the template dropdown at the very top and you should be able to just add it and be good to go.
 
+If it's easier for you, just create the xml file in the above folder and paste this in:
+
+```
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>chatarr</Name>
+  <Repository>staythepath/chatarr:latest</Repository>
+  <Registry>https://hub.docker.com/r/staythepath/chatarr</Registry>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/staythepath/chatarr/issues</Support>
+  <Project/>
+  <Overview>An OpenAI based chatbot with radarr integration. You can talk to the bot about movies and any time it mentions a movie you can click the movie title to add the movie to radarr. If you hover over the title a popover comes up with details about the movie. If you click a persons name a popover comes up with details about the person. The discord bot is sort of functional, but you have to restart the container to get it to stop and you have to save the configuration with the box checked to get it to start. </Overview>
+  <Category>MediaApp:Other Other:</Category>
+  <WebUI>http://[IP]:[PORT:1138]/</WebUI>
+  <TemplateURL>https://github.com/staythepath/chatarr/template.xml</TemplateURL>
+  <Icon>https://github.com/staythepath/chatarr/blob/main/resources/icon128.png?raw=true</Icon>
+  <ExtraParams/>
+  <PostArgs/>
+  <CPUset/>
+  <DateInstalled>0</DateInstalled>
+  <DonateText/>
+  <DonateLink/>
+  <Requires/>
+  <Config Name="WebUI" Target="1138" Default="1138" Mode="tcp" Description="WebUI port." Type="Port" Display="always" Required="true" Mask="false">1138</Config>
+</Container>
+```
+
+Then it should be a template you can use in Unraid Docker.
+
 ### Setup
 
 Click the config button in the top right.
