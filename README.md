@@ -56,7 +56,7 @@ gunicorn --bind 0.0.0.0:1138 --timeout 60 app:app
 
 ### Unraid
 
-I don't have this in the Community Applications yet, but I hope to get it there at some point. However, you can copy the chatarr.xml from the route of the repo directory to
+I don't have this in the Community Applications yet, but I hope to get it there at some point. However, you can copy the chatarr.xml from the root of the repo directory to
 
 ```
 /boot/config/plugins/dockerMan/templates-user/
