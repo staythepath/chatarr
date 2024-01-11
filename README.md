@@ -151,3 +151,9 @@ There is a lot of stuff I want to add, but I only have so much time, so I'll add
 * Fix some people(I think it's non-actors specifically) not having the right credits. I feel like John Williams has contributed to more than 4 movies
 * Chat message indicating that API keys etc. have not been set/set properly. Indicate which one is wrong.
 * Sonnar support
+
+## Contact
+
+E-mail - staythepatjh@gmail.com (Yes that j is correct. It's not a typo. I cant get access to my staythepath@gmail.com account because it's ancient.)
+
+Reddit - slowthepath
