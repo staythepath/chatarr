@@ -62,7 +62,7 @@ I don't have this in the Community Applications yet, but I hope to get it there 
 /boot/config/plugins/dockerMan/templates-user/
 ```
 
-Then you can simply go to your docker tab and you should have a chatarr template you can choose in the template dropdown at the very top and you should be able to just add it and be good to go.
+Then you can simply go to your docker tab and you should have a Chatarr template you can choose in the template dropdown at the very top and you should be able to just add it and be good to go.
 
 If it's easier for you, just create the xml file in the above folder and paste this in:
 
