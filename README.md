@@ -1,6 +1,6 @@
 # Chatarr
 
-Chatarr is an OpenAI based chatbot that integrates with Radarr. Whenever the chatbot mentions a movie, you simply click it to add it to Radarr and download it. There are popovers for movies and people.
+Chatarr is an OpenAI based chatbot that integrates with Radarr. Whenever the chatbot mentions a movie, you simply click it to add it to Radarr and download it. There are popovers for movies and people. It's a good way to fill up your drives and learn about new movies if that's something you want to do. 
 
 Person popovers have birth/death day, movie credits and a biography. From the person popover, you can click any of the movie credits to ask the chatbot about that particular movie. There are also buttons to ask the chat bot about the person, go to their IMDb and go to their wiki.
 
@@ -9,7 +9,7 @@ Movie popovers come up when you hover over a movie and they contain information 
 There is a discord bot included, but it isn't perfect. Right now you can start it from the config by saving your discord token for your bot, checking the box and picking a channel. To stop the discord bot you have to stop the whole thing, or restart it. It works through reactions in Discord. Any time it mentions a movie, it adds a emoji that corresponds with the reaction in it's message. You can click the reaction at the bottom of the message to add the movie to radarr.
 
 ## Cost Warning
-**Please note: OpenAI charges for API usage. It's recommended to monitor your usage closely, especially when first using this application, to understand potential costs. Using GPT-3.5  makes it relatively cheap.**
+**Please note: OpenAI charges for API usage. It's recommended to monitor your usage closely, especially when first using this application, to understand potential costs.** That said, using GPT-3.5  makes it relatively cheap, it seems more than sufficient to me, and it's much faster. I haven't really seen a lot of stuff GPT-4 does that is much better thatn GPT-3.5, but you can always give it a shot. 
 
 # Installation
 
@@ -117,14 +117,16 @@ PLEASE HELP ME!. I'm very new to all this. I'm open to criticism, new ideas, con
 
 ## Other stuff
 
-If I'm being perfectly honest I don't really know what I'm doing and this is the first thing I've ever really posted anywhere publicly. ChatGPT and Co-pilot did write tons of the code, and although I understand almost all of it, I still feel like I should be a bit embarrassed by what is in here. I'm sure I'm doing some stuff totally wrong and I'd love if someone pointed that stuff out. I don't know if I just use this and feel like it's useful because I made it, or if other people will actually get some use out of it, but I would love if they did, so that's what I'm working towards. I won't be remotely surprised if no one uses this at all, but I hope they do.
+If I'm being perfectly honest I don't really know what I'm doing and this is the first thing I've ever really posted anywhere publicly. ChatGPT and Co-pilot did write tons of the code, and although I understand almost all of it, I still feel like I should be a bit embarrassed by what is in here. I'm sure I'm doing some stuff totally wrong and I'd love if someone pointed that stuff out. I don't know if I just use this and feel like it's useful because I made it, or if other people will actually get some use out of it, but I would love if they did, so that's what I'm working towards. I know it is buggy right now and not perfect, but I keep putting off when I'm going to put it out there, so I'm just putting it out like this.  
+
 
 ## Future Plans
 
 There is a lot of stuff I want to add, but I only have so much time, so I'll add some of this stuff as best I can. This isn't a hard and fast order I intend to add stuff, but here is the stuff I want to add.
 
-* Data builder for crew. Writers, Directors, DoP etc.
-  * Given director, writer, producer etc., ask OpenAI for 20 similar or related directors along with and gather their info and all the info for all their movies and actors in those movies
+* Improve Data builder/cache
+ * Data builder for crew. Writers, Directors, DoP etc.
+  * Given director, writer, producer etc., ask OpenAI for 20 similar or related directors along with and gather their info and all the info for all their movies and maybe actors in those movies
 * Fix popovers not working when waiting on OpenAI response
 * The second it gets the movie titles, and actors, it need to start the API calls for their data IF it doesn't have it already.
 * Download lists 
