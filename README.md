@@ -1,4 +1,9 @@
+![Alt text](/resources/icon128.png) 
 # Chatarr
+
+
+
+
 
 Chatarr is an OpenAI based chatbot that integrates with Radarr. Whenever the chatbot mentions a movie, you simply click it to add it to Radarr and download it. There are popovers for movies and people. It's a good way to fill up your drives and learn about new movies if that's something you want to do. 
 
