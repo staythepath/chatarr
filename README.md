@@ -14,7 +14,7 @@ Movie popovers come up when you hover over a movie and they contain information 
 There is a discord bot included, but it isn't perfect. Right now you can start it from the config by saving your discord token for your bot, checking the box and picking a channel. To stop the discord bot you have to stop the whole thing, or restart it. It works through reactions in Discord. Any time it mentions a movie, it adds a emoji that corresponds with the reaction in it's message. You can click the reaction at the bottom of the message to add the movie to radarr. This is actually how this whole thing started.
 
 ## Cost Warning
-**Please note: OpenAI charges for API usage. It's recommended to monitor your usage closely, especially when first using this application, to understand potential costs.** That said, using GPT-3.5  makes it relatively cheap, it seems more than sufficient to me, and it's much faster. I haven't really seen a lot of stuff GPT-4 does that is much better thatn GPT-3.5, but you can always give it a shot. 
+**Please note: OpenAI charges for API usage. It's recommended to monitor your usage closely, especially when first using this application, to understand potential costs.** That said, using GPT-3.5  makes it relatively cheap, it seems more than sufficient to me, and it's much faster. I haven't really seen a lot of stuff GPT-4 does that is much better than GPT-3.5, but you can always give it a shot. 
 
 # Installation
 
@@ -106,7 +106,7 @@ Click the config button in the top right.
 
 #### Radarr API Key, URL, Quality, Root folder:
 
-If you're reading this, I'm sure you can figure this stuff out. You can find all this stuff is in Radarr itself. You do need to specify the exact quality you want. I have a quality profile called, "this" and I just put in "this" (no quotes) and it uses that profile when downloading. Making the quality input a dropdown is on the (long) list of feature I want to add. The root folder should auto populate, and I think most people won't need to change it from what it loads with, but you should definitely check to make sure you are using the right one. All this stuff is necessary to send the movie to radarr.
+If you're reading this, I'm sure you can figure this stuff out. You can find all this stuff is in Radarr itself. You do need to specify the exact quality you want. I have a quality profile called, "this" and I just put in "this" (no quotes) and it uses that profile when downloading. Making the quality input a dropdown is on the (long) list of feature I want to add. The root folder should auto populate, and I think most people won't need to change it from what it loads with, but you should definitely check to make sure you are using the right one. All this stuff is necessary to send the movie to Radarr.
 
 #### TMDb key:
 
