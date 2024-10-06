@@ -26,7 +26,6 @@ class MovieDataBuilder:
         self.tmdb = TMDb()  # Initialize the 'tmdb' attribute
         self.cache_file = "cache.json"
         self.semaphore = asyncio.Semaphore(3)  # Limit to 5 concurrent tasks
-        self.session = aiohttp.ClientSession()  # Create a shared session
 
     def is_json_serializable(data):
         try:
@@ -51,6 +50,9 @@ class MovieDataBuilder:
             json.dump(self.cache, file, indent=4)
 
     async def search_movie(self, title):
+        if not self.session:
+            self.session = aiohttp.ClientSession()
+
         search_url = f"https://api.themoviedb.org/3/search/movie?api_key={self.tmdb.api_key}&query={title}"
         async with aiohttp.ClientSession() as session:
             async with session.get(search_url) as response:
@@ -161,6 +163,9 @@ class MovieDataBuilder:
         cache_key = f"movie_card_{tmdb_id}"
         cached_data = self.get_from_cache(cache_key, is_movie=True)
 
+        if not self.session:
+            self.session = aiohttp.ClientSession()
+
         if cached_data:
             return cached_data
 
@@ -193,9 +198,11 @@ class MovieDataBuilder:
                 "writers": writers,
                 "stars": stars,
                 "description": movie.get("overview", ""),
-                "poster_path": f"https://image.tmdb.org/t/p/original{movie.get('poster_path', '')}"
-                if movie.get("poster_path")
-                else None,
+                "poster_path": (
+                    f"https://image.tmdb.org/t/p/original{movie.get('poster_path', '')}"
+                    if movie.get("poster_path")
+                    else None
+                ),
                 "release_date": movie.get("release_date", ""),
                 "vote_average": movie.get("vote_average", ""),
                 "imdb_id": imdb_id,
@@ -220,6 +227,9 @@ class MovieDataBuilder:
     async def get_person_details(self, name):
         cache_key = f"person_{name}"
         cached_data = self.get_from_cache(cache_key, is_movie=False)
+
+        if not self.session:
+            self.session = aiohttp.ClientSession()
 
         if cached_data:
             return cached_data
@@ -271,6 +281,9 @@ class MovieDataBuilder:
             return {}
 
     async def fetch_async_with_session(self, session, url):
+        if not self.session:
+            self.session = aiohttp.ClientSession()
+
         try:
             async with session.get(url) as response:
                 if response.status == 200:
@@ -285,6 +298,9 @@ class MovieDataBuilder:
             return None
 
     async def get_combined_credits(self, person_id):
+        if not self.session:
+            self.session = aiohttp.ClientSession()
+
         search_url = f"https://api.themoviedb.org/3/person/{person_id}/combined_credits?api_key={self.tmdb.api_key}"
         async with aiohttp.ClientSession() as session:
             async with session.get(search_url) as response:
@@ -295,6 +311,9 @@ class MovieDataBuilder:
                     return []
 
     async def get_imdb_id(self, title, max_retries=3, initial_delay=2):
+        if not self.session:
+            self.session = aiohttp.ClientSession()
+
         if not title:
             logging.warning(f"Invalid title provided for IMDb ID lookup: '{title}'")
             return "Not Available"
@@ -323,6 +342,9 @@ class MovieDataBuilder:
                     return "Not Available"
 
     async def get_imdb_id_for_person(self, name, max_retries=3, initial_delay=2):
+        if not self.session:
+            self.session = aiohttp.ClientSession()
+
         if not name:
             logging.warning(f"Invalid name provided for IMDb ID lookup: '{name}'")
             return "Not Available"
@@ -351,6 +373,9 @@ class MovieDataBuilder:
                     return "Not Available"
 
     async def get_wiki_url(self, title):
+        if not self.session:
+            self.session = aiohttp.ClientSession()
+
         """
         Retrieve the Wikipedia URL for a given movie title using Wikimedia API.
         """
@@ -379,6 +404,8 @@ class MovieDataBuilder:
             return f"Error: {e}"
 
     async def build_data_for_people(self, actor_name):
+        if not self.session:
+            self.session = aiohttp.ClientSession()
         try:
             if not isinstance(actor_name, str):
                 raise ValueError(f"Actor name must be a string. Received: {actor_name}")
@@ -495,6 +522,9 @@ class MovieDataBuilder:
             print(f"Error occurred while processing actor: {actor_name}. Error: {e}")
 
     async def build_data_for_movie(self, movie_title):
+        if not self.session:
+            self.session = aiohttp.ClientSession()
+
         print("Starting data build for movie:", movie_title)
         try:
             movie_search = await self.search_movie(movie_title)
@@ -564,6 +594,9 @@ class MovieDataBuilder:
             print("Error occurred while processing movie:", movie_title, "Error:", e)
 
     async def fetch_and_store_movie_details(self, movie_title):
+        if not self.session:
+            self.session = aiohttp.ClientSession()
+
         try:
             movie_search_credit = await self.search_movie(movie_title)
             if movie_search_credit:
@@ -586,6 +619,9 @@ class MovieDataBuilder:
             print(f"Error occurred while fetching movie details for {movie_title}: {e}")
 
     async def fetch_person_details(self, star_name):
+        if not self.session:
+            self.session = aiohttp.ClientSession()
+
         try:
             person_details = await self.get_person_details(star_name)
             self.cache["person_details"][f"person_{star_name}"] = person_details
