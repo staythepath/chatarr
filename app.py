@@ -175,6 +175,18 @@ async def get_channels(token):
     await client.start(token)
 
 
+@app.route("/prefetch_data/<type>/<name>")
+def prefetch_data(type, name):
+    print("Prefetching data for", type, name)
+    if type == "person":
+        data = data_manager.get_person_details(name)
+    elif type == "movie":
+        data = data_manager.get_movie_details(name)  # Adjust as needed
+    else:
+        return jsonify({"error": "Invalid type"}), 400
+    return jsonify(data)
+
+
 @app.route("/server_status")
 def server_status():
     return jsonify({"status": "ready"})
