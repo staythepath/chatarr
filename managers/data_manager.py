@@ -8,6 +8,7 @@ import os
 import logging
 import asyncio
 import aiohttp
+import sqlite3
 
 
 class DataManager:
@@ -17,57 +18,176 @@ class DataManager:
         self.tmdb.api_key = self.config_manager.get_config_value("tmdb_api_key")
         self.movie_api = Movie()
         self.cache_file = "cache.json"  # Path to the JSON cache file
-        self.load_cache_from_file()  # Load existing cache
 
-    def load_cache_from_file(self):
-        if os.path.exists(self.cache_file):
-            with open(self.cache_file, "r") as file:
-                try:
-                    self.cache = json.load(file)
-                except json.JSONDecodeError as e:
-                    print(f"Error loading cache file: {e}")
-                    self.cache = {
-                        "movie_details": {},
-                        "person_details": {},
-                    }  # Initialize with an empty cache if the file is corrupted
-        else:
-            self.cache = {
-                "movie_details": {},
-                "person_details": {},
-            }  # Initialize with an empty cache if the file does not exist
-            self.save_cache_to_file()  # Create a new cache file
+        # Relative path to movies.db from the current file
+        db_path = os.path.join(os.path.dirname(__file__), "movies.db")
+
+        # Initialize SQLite connection and cursor
+        self.db_conn = sqlite3.connect(db_path)
+        self.db_cursor = self.db_conn.cursor()
+
+    logging.basicConfig(
+        level=logging.DEBUG,  # You can set this to logging.INFO for less verbosity
+        format="%(asctime)s - %(levelname)s - %(message)s",
+    )
 
     def get_movie_details(self, tmdb_id):
+        logging.debug(f"Fetching movie details for TMDb ID: {tmdb_id}")
         return self.movie_api.details(tmdb_id)
 
     def save_cache_to_file(self):
-        """Save the current state of the cache to a JSON file with pretty-printing."""
+        logging.debug(f"Saving cache to {self.cache_file}")
         with open(self.cache_file, "w") as file:
             json.dump(self.cache, file, indent=4, sort_keys=True)
+        logging.info("Cache saved successfully.")
 
     def get_from_cache(self, key, is_movie=True):
-        """Retrieve an item from the cache if it exists."""
-        category = "movie_details" if is_movie else "person_details"
-        return self.cache[category].get(key)
+        """Retrieve an item from the database if it exists."""
+        if is_movie:
+            # Fetch movie details from the database
+            logging.debug(f"Looking for movie with tmdb_id {key} in the database")
+            self.db_cursor.execute(
+                "SELECT * FROM movie_details WHERE tmdb_id = ?", (key,)
+            )
+            data = self.db_cursor.fetchone()  # Fetch one result
+            if data:
+                # Convert the result to a dictionary to match previous JSON cache structure
+                movie_data = {
+                    "tmdb_id": data[0],
+                    "title": data[1],
+                    "director": data[2],
+                    "dop": data[3],
+                    "writers": data[4],
+                    "stars": data[5],
+                    "description": data[6],
+                    "poster_path": data[7],
+                    "release_date": data[8],
+                    "vote_average": data[9],
+                    "imdb_id": data[10],
+                    "wiki_url": data[11],
+                }
+                logging.debug(f"Cache hit for movie: {key}")
+                return movie_data
+            else:
+                logging.debug(f"Cache miss for movie: {key}")
+                return None
+        else:
+            # Fetch person details from the database
+            logging.debug(f"Looking for person with name {key} in the database")
+            self.db_cursor.execute(
+                "SELECT * FROM person_details WHERE name = ?", (key,)
+            )
+            data = self.db_cursor.fetchone()  # Fetch one result
+            if data:
+                # Convert the result to a dictionary to match previous JSON cache structure
+                person_data = {
+                    "name": data[0],
+                    "biography": data[1],
+                    "birthday": data[2],
+                    "deathday": data[3],
+                    "place_of_birth": data[4],
+                    "profile_path": data[5],
+                    "movie_credits": json.loads(
+                        data[6]
+                    ),  # Assuming stored as JSON in DB
+                    "imdb_id": data[7],
+                    "wiki_url": data[8],
+                }
+                logging.debug(f"Cache hit for person: {key}")
+                return person_data
+            else:
+                logging.debug(f"Cache miss for person: {key}")
+                return None
 
     def add_to_cache(self, key, data, is_movie=True):
-        """Add an item to the cache."""
-        category = "movie_details" if is_movie else "person_details"
-        self.cache[category][key] = data
-        self.save_cache_to_file()  # Save updated cache to file
+        """Add an item to the database."""
+        if is_movie:
+            # Insert or update movie details in the database
+            self.db_cursor.execute(
+                """
+                INSERT OR REPLACE INTO movie_details 
+                (tmdb_id, title, director, dop, writers, stars, description, poster_path, release_date, vote_average, imdb_id, wiki_url)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+                (
+                    data["tmdb_id"],
+                    data["title"],
+                    data["director"],
+                    data["dop"],
+                    data["writers"],
+                    data["stars"],
+                    data["description"],
+                    data["poster_path"],
+                    data["release_date"],
+                    data["vote_average"],
+                    data["imdb_id"],
+                    data["wiki_url"],
+                ),
+            )
+        else:
+            # Insert or update person details in the database
+            self.db_cursor.execute(
+                """
+                INSERT OR REPLACE INTO person_details 
+                (name, biography, birthday, deathday, place_of_birth, profile_path, movie_credits, imdb_id, wiki_url)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+                (
+                    data["name"],
+                    data["biography"],
+                    data["birthday"],
+                    data["deathday"],
+                    data["place_of_birth"],
+                    data["profile_path"],
+                    json.dumps(
+                        data["movie_credits"]
+                    ),  # Convert list back to JSON string
+                    data["imdb_id"],
+                    data["wiki_url"],
+                ),
+            )
+
+        # Commit changes to the database
+        self.db_conn.commit()
+        logging.debug(f"Added {key} to database.")
 
     def update_tmdb_api_key(self):
         self.tmdb.api_key = self.config_manager.get_config_value("tmdb_api_key")
+        logging.info(f"TMDb API key updated to {self.tmdb.api_key}")
 
     def search_movie(self, title):
+        logging.debug(f"Searching for movie: {title}")
         return self.movie_api.search(title)
 
     def get_combined_credits(self, person_id):
         """Fetch combined movie and TV credits for a person."""
+        # Check if credits already exist in the database for this person
+        self.db_cursor.execute(
+            "SELECT movie_credits FROM person_details WHERE imdb_id = ?", (person_id,)
+        )
+        cached_credits = self.db_cursor.fetchone()
+
+        if cached_credits:
+            return json.loads(cached_credits[0])
+
+        # If not in database, fetch from the API
         url = f"https://api.themoviedb.org/3/person/{person_id}/combined_credits?api_key={self.tmdb.api_key}"
         response = requests.get(url)
         if response.status_code == 200:
-            return response.json()
+            credits = response.json()
+
+            # Process credits and store them in the database
+            self.db_cursor.execute(
+                """
+                UPDATE person_details
+                SET movie_credits = ?
+                WHERE imdb_id = ?
+            """,
+                (json.dumps(credits), person_id),
+            )
+
+            self.db_conn.commit()
+            return credits
         else:
             return {}
 
@@ -85,14 +205,12 @@ class DataManager:
             37,
             53,
             80,
-            # 99,
             878,
             9648,
             10402,
             10749,
             10751,
             10752,
-            # 10770,
         }  # IDs of typical feature film genres
         min_vote_count = 50  # Minimum vote count threshold
         seen_titles = set()  # To track titles and avoid duplicates
@@ -107,9 +225,7 @@ class DataManager:
                 and credit.get("vote_count", 0) >= min_vote_count
             ):
                 if not feature_film_genre_ids.isdisjoint(set(credit["genre_ids"])):
-                    title = self.add_formatted_credit(
-                        credit, formatted_credits, seen_titles
-                    )
+                    self.add_formatted_credit(credit, formatted_credits, seen_titles)
 
         # Process crew credits, particularly for directing
         for credit in combined_credits.get("crew", []):
@@ -118,9 +234,7 @@ class DataManager:
                 and "release_date" in credit
                 and credit.get("vote_count", 0) >= min_vote_count
             ):
-                title = self.add_formatted_credit(
-                    credit, formatted_credits, seen_titles
-                )
+                self.add_formatted_credit(credit, formatted_credits, seen_titles)
 
         # Sort by release year in descending order
         return sorted(
@@ -183,53 +297,69 @@ class DataManager:
             return f"Error: {e}"
 
     def get_movie_card_details(self, tmdb_id):
-        cache_key = f"movie_card_{tmdb_id}"
-        cached_data = self.get_from_cache(cache_key, is_movie=True)
+        """Retrieve movie card details from the database or TMDb."""
+        logging.debug(f"Fetching movie card details for TMDb ID: {tmdb_id}")
+
+        # Check if movie is already in the database
+        cached_data = self.get_from_cache(tmdb_id, is_movie=True)
 
         if cached_data:
-            time.sleep(0.250)  # Add a 350ms delay
+            logging.debug(f"Movie found in database: {cached_data}")
             return cached_data
 
-        # Fetch the movie details and credits if not in cache
-        movie = self.movie_api.details(tmdb_id)
-        credits = self.movie_api.credits(tmdb_id)
-        imdb_id = self.get_imdb_id(movie.title)
-        director = self.get_crew_member(credits, "Director")
-        dop = self.get_crew_member(credits, "Director of Photography")
-        writers = self.get_top_writers(credits)  # Get top 5 writers
-        stars = self.get_main_actors(credits)  # Get top 5 actors
-        wiki_url = self.get_wiki_url(movie.title)
+        # If not found in the database, fetch from the API
+        logging.debug(
+            f"Movie with tmdb_id {tmdb_id} not found in the database, fetching from API."
+        )
+        try:
+            movie = self.movie_api.details(tmdb_id)
+            credits = self.movie_api.credits(tmdb_id)
+            imdb_id = self.get_imdb_id(movie.title)
+            director = self.get_crew_member(credits, "Director")
+            dop = self.get_crew_member(credits, "Director of Photography")
+            writers = self.get_top_writers(credits)
+            stars = self.get_main_actors(credits)
+            wiki_url = self.get_wiki_url(movie.title)
 
-        movie_card_data = {
-            "tmdb_id": tmdb_id,
-            "title": movie.title,
-            "director": director,
-            "dop": dop,
-            "writers": writers,
-            "stars": stars,
-            "description": movie.overview,
-            "poster_path": (
-                f"https://image.tmdb.org/t/p/original{movie.poster_path}"
-                if movie.poster_path
-                else None
-            ),
-            "release_date": movie.release_date,
-            "vote_average": movie.vote_average,
-            "imdb_id": imdb_id,
-            "wiki_url": wiki_url,
-        }
+            movie_card_data = {
+                "tmdb_id": tmdb_id,
+                "title": movie.title,
+                "director": director,
+                "dop": dop,
+                "writers": writers,
+                "stars": stars,
+                "description": movie.overview,
+                "poster_path": (
+                    f"https://image.tmdb.org/t/p/original{movie.poster_path}"
+                    if movie.poster_path
+                    else None
+                ),
+                "release_date": movie.release_date,
+                "vote_average": movie.vote_average,
+                "imdb_id": imdb_id,
+                "wiki_url": wiki_url,
+            }
 
-        # Add the fetched data to the cache
-        self.add_to_cache(cache_key, movie_card_data)
-        return movie_card_data
+            # Log the data fetched from the API
+            logging.debug(f"Fetched movie data from API: {movie_card_data}")
+
+            # Store movie details in the database
+            self.add_to_cache(tmdb_id, movie_card_data, is_movie=True)
+
+            return movie_card_data
+        except Exception as e:
+            logging.error(f"Error fetching movie details for TMDb ID {tmdb_id}: {e}")
+            return {}
 
     def get_person_details(self, name):
-        cache_key = f"person_{name}"
-        cached_data = self.get_from_cache(cache_key, is_movie=False)
+        """Retrieve person details from the database or TMDb."""
+        # Check if person details exist in the database
+        cached_data = self.get_from_cache(name, is_movie=False)
 
         if cached_data:
             return cached_data
 
+        # If not in database, fetch from the API
         person_api = Person()
         search_results = person_api.search(name)
 
@@ -239,9 +369,8 @@ class DataManager:
             # Fetch the person details
             person_details = person_api.details(person_id)
             imdb_id = self.get_imdb_id_for_person(person_details.name)
-            print("HERE IS THE IMDB ID:", imdb_id)
 
-            # Fetch the combined credits for the person using the TMDb API
+            # Fetch combined credits for the person
             combined_credits_url = f"https://api.themoviedb.org/3/person/{person_id}/combined_credits?api_key={self.tmdb.api_key}&language=en-US"
             response = requests.get(combined_credits_url)
             if response.status_code == 200:
@@ -250,10 +379,10 @@ class DataManager:
             else:
                 credits_info = []
 
-            # Synchronously get the Wikipedia URL
+            # Get Wikipedia URL
             wiki_url = self.get_wiki_url(person_details.name)
 
-            # Combine the details and credits to return a single response
+            # Combine the details and store them in the database
             person_data = {
                 "name": person_details.name,
                 "biography": person_details.biography,
@@ -266,8 +395,8 @@ class DataManager:
                 "wiki_url": wiki_url,
             }
 
-            # Add the fetched data to the cache
-            self.add_to_cache(cache_key, person_data, is_movie=False)
+            # Store person details in the database
+            self.add_to_cache(name, person_data, is_movie=False)
             return person_data
 
         return {}
