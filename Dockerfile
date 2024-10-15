@@ -22,5 +22,6 @@ EXPOSE 1138
 ENV FLASK_APP=config_ui.py
 
 # Run app.py when the container launches
-CMD ["gunicorn", "--bind", "0.0.0.0:1138", "-k", "uvicorn.workers.UvicornWorker", "app:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:1138", "app:app"]
+
 

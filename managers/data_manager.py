@@ -208,9 +208,11 @@ class DataManager:
             "writers": writers,
             "stars": stars,
             "description": movie.overview,
-            "poster_path": f"https://image.tmdb.org/t/p/original{movie.poster_path}"
-            if movie.poster_path
-            else None,
+            "poster_path": (
+                f"https://image.tmdb.org/t/p/original{movie.poster_path}"
+                if movie.poster_path
+                else None
+            ),
             "release_date": movie.release_date,
             "vote_average": movie.vote_average,
             "imdb_id": imdb_id,

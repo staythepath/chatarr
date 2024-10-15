@@ -10,7 +10,7 @@ from tmdbv3api import TMDb, Movie, Person
 import aiohttp
 from aiohttp import ClientTimeout
 import asyncio
-from data_manager import DataManager  # if in a 'managers' folder
+from data_manager import DataManager
 from config_manager import ConfigManager
 import sqlite3
 
@@ -530,41 +530,38 @@ class MovieDataBuilder:
         if not self.session:
             self.session = aiohttp.ClientSession()
 
-        print(f"{movie_title.upper()}: Starting data build for movie")
+        print("Starting data build for movie:", movie_title)
         try:
             # Step 1: Fetch movie details
             movie_search = await self.search_movie(movie_title)
             if not movie_search:
-                print(f"{movie_title.upper()}: No search results for movie.")
+                print(f"No search results for movie: {movie_title}")
                 return
 
             movie_id = movie_search[0]["id"]
             movie_details = await self.get_movie_card_details(movie_id)
             if not movie_details:
-                print(f"{movie_title.upper()}: No details found for movie.")
+                print(f"No details found for movie: {movie_title}")
                 return
 
             # Step 2: Store fetched movie details in SQLite
             self.add_to_cache(movie_id, movie_details, is_movie=True)
-            print(f"{movie_title.upper()}: Added movie to database.")
+            print(f"Added movie to database: {movie_title}")
 
             # Step 3: Fetch details for all relevant people (Actors, Directors, Writers, DoP)
             crew_list = self.get_related_people(movie_details)
 
             # Sequentially process each person
             for person_name in crew_list:
-                print(
-                    f"{movie_title.upper()}: Fetching movies for person: {person_name}"
-                )
-                await self.fetch_person_and_movies(person_name, movie_title.upper())
+                await self.fetch_person_and_movies(person_name)
 
-            print(f"{movie_title.upper()}: Finished data build for movie.")
+            print(f"Finished data build for movie: {movie_title}")
 
         except Exception as e:
             logging.error(
-                f"{movie_title.upper()}: Failed to fetch details for movie. Error: {e}"
+                f"Failed to fetch details for movie: {movie_title}. Error: {e}"
             )
-            print(f"{movie_title.upper()}: Error occurred while processing movie: {e}")
+            print("Error occurred while processing movie:", movie_title, "Error:", e)
 
     def get_from_cache_by_title(self, title):
         """
@@ -589,23 +586,17 @@ class MovieDataBuilder:
             }
         return None
 
-    async def fetch_person_and_movies(self, person_name, movie_title):
-        print(f"{movie_title}: Fetching movies for person: {person_name}", flush=True)
+    async def fetch_person_and_movies(self, person_name):
+        print(f"Fetching movies for person: {person_name}", flush=True)
 
-        # Check if the person is already in the database before fetching
+        # Fetch person details if not already in the database
         person_details = self.get_from_cache(person_name, is_movie=False)
 
         if not person_details:
-            await self.fetch_person_details(person_name, movie_title)
-            print(
-                f"{movie_title}: Fetched and added person to database: {person_name}",
-                flush=True,
-            )
+            await self.fetch_person_details(person_name)
+            print(f"Fetched and added person to database: {person_name}", flush=True)
         else:
-            print(
-                f"{movie_title}: Person already in database: {person_name}", flush=True
-            )
-            return  # No need to fetch this person again
+            print(f"Person already in database: {person_name}", flush=True)
 
         # Fetch and store their other movie credits (but no recursion)
         star_details = self.get_from_cache(person_name, is_movie=False)
@@ -616,13 +607,11 @@ class MovieDataBuilder:
 
                 # Check if the movie is already in the database by title
                 if self.get_from_cache_by_title(movie_title_credit):
-                    print(
-                        f"{movie_title}: Movie already in database: {movie_title_credit}"
-                    )
+                    print(f"Movie already in database: {movie_title_credit}")
                     continue  # Skip fetching if already in the database
 
                 print(
-                    f"{movie_title}: Fetching movie '{movie_title_credit}' for person: {person_name}",
+                    f"Fetching movie '{movie_title_credit}' for person: {person_name}",
                     flush=True,
                 )
                 movie_fetch_tasks.append(
@@ -637,10 +626,7 @@ class MovieDataBuilder:
                     *movie_fetch_tasks
                 )  # Fetch movie details concurrently
 
-            print(
-                f"{movie_title}: Finished fetching movies for person: {person_name}",
-                flush=True,
-            )
+            print(f"Finished fetching movies for person: {person_name}", flush=True)
 
     async def fetch_and_store_movie_details(self, movie_title):
         if not self.session:
@@ -650,15 +636,13 @@ class MovieDataBuilder:
             # First, check if the movie is already in the database by title
             existing_movie = self.get_from_cache_by_title(movie_title)
             if existing_movie:
-                print(
-                    f"{movie_title.upper()}: Movie already in database: {existing_movie['title']}"
-                )
+                print(f"Movie already in database: {existing_movie['title']}")
                 return  # No need to fetch if it's already in the database
 
             # Search for the movie by title to get its ID if not found in the cache
             movie_search_credit = await self.search_movie(movie_title)
             if not movie_search_credit:
-                print(f"{movie_title.upper()}: Failed to find movie.")
+                print(f"Failed to find movie: {movie_title}")
                 return
 
             movie_id_credit = movie_search_credit[0]["id"]
@@ -668,28 +652,26 @@ class MovieDataBuilder:
             if movie_details_credit:  # Ensure the movie details are not empty
                 # Store the movie details in SQLite
                 self.add_to_cache(movie_id_credit, movie_details_credit, is_movie=True)
-                print(f"{movie_title.upper()}: Added movie to database.")
+                print(f"Added movie to database: {movie_title}")
             else:
-                print(f"{movie_title.upper()}: No details found for movie.")
+                print(f"No details found for movie: {movie_title}")
 
         except aiohttp.ClientResponseError as e:
             if e.status == 429 or "rate limit" in str(e).lower():
-                print(f"{movie_title.upper()}: Rate limit hit, retrying after delay...")
+                print(f"Rate limit hit for {movie_title}, retrying after delay...")
                 await asyncio.sleep(5)  # Introduce a delay before retrying
                 await self.fetch_and_store_movie_details(
                     movie_title
                 )  # Retry the same movie
             else:
                 print(
-                    f"{movie_title.upper()}: Error occurred while fetching movie details: {e}"
+                    f"Error occurred while fetching movie details for {movie_title}: {e}"
                 )
 
         except Exception as e:
-            print(
-                f"{movie_title.upper()}: Error occurred while fetching movie details: {e}"
-            )
+            print(f"Error occurred while fetching movie details for {movie_title}: {e}")
 
-    async def fetch_person_details(self, star_name, movie_title):
+    async def fetch_person_details(self, star_name):
         if not self.session:
             self.session = aiohttp.ClientSession()
 
@@ -699,28 +681,27 @@ class MovieDataBuilder:
                 # Store person details in SQLite instead of cache
                 self.add_to_cache(star_name, person_details, is_movie=False)
                 logging.info(
-                    f"{movie_title}: Successfully fetched and added details for person: {star_name}"
+                    f"Successfully fetched and added details for person: {star_name}"
                 )
-                print(f"{movie_title}: Added person to database: {star_name}")
+                print(f"Added person to database: {star_name}")
             else:
-                print(f"{movie_title}: No details found for person: {star_name}")
+                print(f"No details found for person: {star_name}")
         except Exception as e:
+            # Check for rate limiting in the exception message or response
             if (
                 "rate limit" in str(e).lower()
                 or isinstance(e, aiohttp.ClientResponseError)
                 and e.status == 429
             ):
-                logging.warning(f"{movie_title}: Rate limit hit, pausing for 5 seconds")
+                logging.warning("Rate limit hit, pausing for 5 seconds")
                 await asyncio.sleep(5)  # Pause for 5 seconds
-                return await self.fetch_person_details(
-                    star_name, movie_title
-                )  # Retry the request
+                return await self.fetch_person_details(star_name)  # Retry the request
             else:
                 logging.error(
-                    f"{movie_title}: Failed to fetch details for person: {star_name}. Error: {e}"
+                    f"Failed to fetch details for person: {star_name}. Error: {e}"
                 )
                 print(
-                    f"{movie_title}: Error occurred while processing person: {star_name}, Error: {e}"
+                    f"Error occurred while processing person: {star_name}, Error: {e}"
                 )
 
     def get_main_actors(
@@ -739,6 +720,7 @@ class MovieDataBuilder:
 
 
 # Usage example with DataManager and ConfigManager instances
+# Usage example with DataManager and ConfigManager instances
 async def main():
     config_manager = ConfigManager()  # Initialize ConfigManager
     data_manager = DataManager(config_manager)  # Pass ConfigManager to DataManager
@@ -748,16 +730,22 @@ async def main():
     movie_file = "movies_list.txt"  # File with the list of movies
 
     try:
+
         with open(movie_file, "r") as file:
             movie_titles = (
                 file.read().splitlines()
             )  # Read lines and remove extra whitespace
 
+        print("Got past with")
+        print(f"MovieTitles: ", movie_titles)
         # Step 2: Loop through each movie and build data one at a time
         for movie_title in movie_titles:
+            print("Looping through titles")
+            print(f"Processing movie: {movie_title}")
             await movie_builder.build_data_for_movie(
                 movie_title
             )  # Process one movie at a time
+            print(f"Finished processing movie: {movie_title}")
 
     except Exception as e:
         print(f"Error occurred: {e}")
@@ -765,3 +753,9 @@ async def main():
 
 # Run the async main function
 asyncio.run(main())
+
+
+# Ensure the database connection is properly closed
+def __del__(self):
+    if self.db_conn:
+        self.db_conn.close()

@@ -14,7 +14,6 @@ from managers.data_manager import DataManager
 from managers.radarr_manager import RadarrManager
 from managers.openai_chat_manager import OpenAIChatManager
 
-from managers.movie_data_builder import MovieDataBuilder
 
 # Import DiscordBot from the bots directory if needed
 # from bots.discord_bot import DiscordBot
@@ -128,15 +127,15 @@ movies = [
     # "Casablanca",
 ]
 
-movie_builder = MovieDataBuilder(data_manager)
+# movie_builder = MovieDataBuilder(data_manager)
 
 
-async def call_build_data(actors, movies):
-    # for actor in actors:
-    # print("::::::::::::FINISHED BUILDING DATA FOR ALL ACTORS::::::::::::")
-    for movie in movies:
-        await movie_builder.build_data_for_movie(movie)
-    print("::::::::::::FINISHED BUILDING DATA FOR ALL MOVIES::::::::::::")
+# async def call_build_data(actors, movies):
+# for actor in actors:
+# print("::::::::::::FINISHED BUILDING DATA FOR ALL ACTORS::::::::::::")
+#    for movie in movies:
+#       await movie_builder.build_data_for_movie(movie)
+#    print("::::::::::::FINISHED BUILDING DATA FOR ALL MOVIES::::::::::::")
 
 
 # As long as this is commented out, it wil just run without the data building

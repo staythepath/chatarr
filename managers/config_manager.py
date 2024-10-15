@@ -1,10 +1,13 @@
-import yaml
 import os
+import yaml
 
 
 class ConfigManager:
     def __init__(self, config_directory="config", config_filename="config.yaml"):
-        self.config_path = os.path.join(config_directory, config_filename)
+        # Get the directory of the root of the project (one level up from 'managers')
+        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        # Construct the full path to the config file based on the project root
+        self.config_path = os.path.join(project_root, config_directory, config_filename)
         self.config = self.load_config()
 
     def load_config(self):
