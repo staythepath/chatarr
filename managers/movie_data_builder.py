@@ -30,22 +30,21 @@ class MovieDataBuilder:
         self.session = None
 
         # SQLite setup
-        self.db_conn = sqlite3.connect("movies.db")  # Connection to the SQLite database
+        self.db_conn = sqlite3.connect(
+            "database.db"
+        )  # Connection to the SQLite database
         self.db_cursor = self.db_conn.cursor()
         self.create_tables()
 
     def create_tables(self):
         """Create tables if they don't already exist."""
+
         # Create a table for movie details
         self.db_cursor.execute(
             """
-            CREATE TABLE IF NOT EXISTS movie_details (
+            CREATE TABLE IF NOT EXISTS movies (
                 tmdb_id INTEGER PRIMARY KEY,
                 title TEXT,
-                director TEXT,
-                dop TEXT,
-                writers TEXT,
-                stars TEXT,
                 description TEXT,
                 poster_path TEXT,
                 release_date TEXT,
@@ -59,20 +58,47 @@ class MovieDataBuilder:
         # Create a table for person details
         self.db_cursor.execute(
             """
-            CREATE TABLE IF NOT EXISTS person_details (
-                name TEXT PRIMARY KEY,
+            CREATE TABLE IF NOT EXISTS people (
+                person_id INTEGER PRIMARY KEY,
+                name TEXT,
                 biography TEXT,
                 birthday TEXT,
                 deathday TEXT,
                 place_of_birth TEXT,
                 profile_path TEXT,
-                movie_credits TEXT,
                 imdb_id TEXT,
                 wiki_url TEXT
             )
         """
         )
-        self.db_conn.commit()  # Save changes
+
+        # Create a table for movie cast
+        self.db_cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS movie_cast (
+                movie_id INTEGER,
+                person_id INTEGER,
+                role TEXT,
+                FOREIGN KEY (movie_id) REFERENCES movies (tmdb_id),
+                FOREIGN KEY (person_id) REFERENCES people (person_id)
+            )
+        """
+        )
+
+        # Create a table for movie crew
+        self.db_cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS movie_crew (
+                movie_id INTEGER,
+                person_id INTEGER,
+                job TEXT,  -- 'Director', 'Writer', 'DOP'
+                FOREIGN KEY (movie_id) REFERENCES movies (tmdb_id),
+                FOREIGN KEY (person_id) REFERENCES people (person_id)
+            )
+        """
+        )
+
+        self.db_conn.commit()
 
     def is_json_serializable(data):
         try:
@@ -120,48 +146,102 @@ class MovieDataBuilder:
         except (TypeError, OverflowError):
             return False
 
-    def add_to_cache(self, key, data, is_movie=True):
+    def add_to_cache(self, movie_data, is_movie=True):
         if is_movie:
+            # Insert movie details into the 'movies' table
+
             self.db_cursor.execute(
                 """
-                INSERT OR REPLACE INTO movie_details 
-                (tmdb_id, title, director, dop, writers, stars, description, poster_path, release_date, vote_average, imdb_id, wiki_url)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
+                INSERT OR REPLACE INTO movies
+                (tmdb_id, title, description, poster_path, release_date, vote_average, imdb_id, wiki_url)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
                 (
-                    data["tmdb_id"],
-                    data["title"],
-                    data["director"],
-                    data["dop"],
-                    data["writers"],
-                    data["stars"],
-                    data["description"],
-                    data["poster_path"],
-                    data["release_date"],
-                    data["vote_average"],
-                    data["imdb_id"],
-                    data["wiki_url"],
+                    movie_data["tmdb_id"],
+                    movie_data["title"],
+                    movie_data["description"],
+                    movie_data["poster_path"],
+                    movie_data["release_date"],
+                    movie_data["vote_average"],
+                    movie_data["imdb_id"],
+                    movie_data["wiki_url"],
                 ),
             )
+
+            # Insert cast (stars) into the 'movie_cast' table
+            # Insert cast (stars) into the 'movie_cast' table, using an empty list if 'stars' is missing
+            for star in movie_data.get("stars", []):
+                if isinstance(star, dict) and "person_id" in star:
+                    self.db_cursor.execute(
+                        """
+                        INSERT OR REPLACE INTO movie_cast
+                        (movie_id, person_id, role)
+                        VALUES (?, ?, ?)
+                        """,
+                        (movie_data["tmdb_id"], star["person_id"], "Actor"),
+                    )
+
+            # Insert writers into the 'movie_crew' table, using an empty list if 'writers' is missing
+            for writer in movie_data.get("writers", []):
+                if isinstance(writer, dict) and "person_id" in writer:
+                    self.db_cursor.execute(
+                        """
+                        INSERT OR REPLACE INTO movie_crew
+                        (movie_id, person_id, job)
+                        VALUES (?, ?, ?)
+                        """,
+                        (movie_data["tmdb_id"], writer["person_id"], "Writer"),
+                    )
+
+            # Insert director into the 'movie_crew' table, using a dictionary with 'Not Available' if 'director' is missing
+            director = movie_data.get("director", {})
+            if isinstance(director, dict) and "person_id" in director:
+                self.db_cursor.execute(
+                    """
+                    INSERT OR REPLACE INTO movie_crew
+                    (movie_id, person_id, job)
+                    VALUES (?, ?, ?)
+                    """,
+                    (movie_data["tmdb_id"], director["person_id"], "Director"),
+                )
+
+            # Insert DOP into the 'movie_crew' table, using a dictionary with 'Not Available' if 'dop' is missing
+            dop = movie_data.get("dop", {})
+            if isinstance(dop, dict) and "person_id" in dop:
+                self.db_cursor.execute(
+                    """
+                    INSERT OR REPLACE INTO movie_crew
+                    (movie_id, person_id, job)
+                    VALUES (?, ?, ?)
+                    """,
+                    (
+                        movie_data["tmdb_id"],
+                        dop["person_id"],
+                        "Director of Photography",
+                    ),
+                )
+
         else:
+            # Insert person details into the 'people' table
             self.db_cursor.execute(
                 """
-                INSERT OR REPLACE INTO person_details 
-                (name, biography, birthday, deathday, place_of_birth, profile_path, movie_credits, imdb_id, wiki_url)
+                INSERT OR REPLACE INTO people
+                (person_id, name, biography, birthday, deathday, place_of_birth, profile_path, imdb_id, wiki_url)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
+                """,
                 (
-                    data["name"],
-                    data["biography"],
-                    data["birthday"],
-                    data["deathday"],
-                    data["place_of_birth"],
-                    data["profile_path"],
-                    json.dumps(data["movie_credits"]),
-                    data["imdb_id"],
-                    data["wiki_url"],
+                    movie_data["person_id"],
+                    movie_data["name"],
+                    movie_data["biography"],
+                    movie_data["birthday"],
+                    movie_data["deathday"],
+                    movie_data["place_of_birth"],
+                    movie_data["profile_path"],
+                    movie_data["imdb_id"],
+                    movie_data["wiki_url"],
                 ),
             )
+
         self.db_conn.commit()
 
     def process_combined_credits(self, combined_credits):
@@ -227,6 +307,7 @@ class MovieDataBuilder:
         cached_data = self.get_from_cache(tmdb_id, is_movie=True)
 
         if cached_data:
+            logging.info(f"Movie found in cache: {cached_data['title']}")
             return cached_data
 
         # If not found in cache, fetch the data from the API
@@ -234,86 +315,135 @@ class MovieDataBuilder:
             details_url = f"https://api.themoviedb.org/3/movie/{tmdb_id}?api_key={self.tmdb.api_key}&language=en-US"
             credits_url = f"https://api.themoviedb.org/3/movie/{tmdb_id}/credits?api_key={self.tmdb.api_key}&language=en-US"
 
-            async with session.get(details_url) as details_response, session.get(
-                credits_url
-            ) as credits_response:
-                if details_response.status == 200 and credits_response.status == 200:
-                    movie = await details_response.json()
-                    credits = await credits_response.json()
-                else:
-                    return {}
+            try:
+                # Fetch the movie details
+                async with session.get(details_url) as details_response:
+                    if details_response.status == 200:
+                        movie = await details_response.json()
+                        # logging.info(
+                        #    f"Movie data type: {type(movie)}"
+                        # )  # Log the type of movie data
+                        # logging.info(
+                        #    f"Movie data content: {json.dumps(movie, indent=2)}"
+                        # )
+                        logging.info(
+                            f"Fetched details for movie: {movie.get('title', 'N/A')}"
+                        )
+                    else:
+                        logging.error(
+                            f"Failed to fetch movie details, status: {details_response.status}"
+                        )
+                        return {}
 
-            imdb_id = await self.get_imdb_id(movie.get("title", ""))
-            director = self.get_crew_member(credits, "Director")
-            dop = self.get_crew_member(credits, "Director of Photography")
-            writers = self.get_top_writers(credits)
-            stars = self.get_main_actors(credits)
-            wiki_url = await self.get_wiki_url(movie.get("title", ""))
+                # Fetch the movie credits
+                async with session.get(credits_url) as credits_response:
+                    if credits_response.status == 200:
+                        credits = await credits_response.json()
+                        # logging.info(
+                        #    f"Credits data type: {type(credits)}"
+                        # )  # Log the type of credits data
+                        # logging.info(
+                        #    f"Credits data content: {json.dumps(credits, indent=2)}"
+                        # )
+                        logging.info(
+                            f"Fetched credits for movie: {movie.get('title', 'N/A')}"
+                        )
+                    else:
+                        logging.error(
+                            f"Failed to fetch credits, status: {credits_response.status}"
+                        )
+                        return {}
 
-            movie_card_data = {
-                "tmdb_id": tmdb_id,
-                "title": movie.get("title", ""),
-                "director": director,
-                "dop": dop,
-                "writers": writers,
-                "stars": stars,
-                "description": movie.get("overview", ""),
-                "poster_path": (
-                    f"https://image.tmdb.org/t/p/original{movie.get('poster_path', '')}"
-                    if movie.get("poster_path")
-                    else None
-                ),
-                "release_date": movie.get("release_date", ""),
-                "vote_average": movie.get("vote_average", ""),
-                "imdb_id": imdb_id,
-                "wiki_url": wiki_url,
-            }
+            except Exception as e:
+                logging.error(f"Error during API call: {e}")
+                return {}
 
-            # Add the fetched data to the cache (SQLite)
-            self.add_to_cache(cache_key, movie_card_data)
-            return movie_card_data
+        # Validate that movie and credits are dictionaries
+        if not isinstance(movie, dict) or not isinstance(credits, dict):
+            logging.error(f"Unexpected response structure for TMDb ID {tmdb_id}")
+            return {}
+
+        imdb_id = await self.get_imdb_id(movie.get("title", ""))
+        director = self.get_crew_member(credits, "Director")
+        dop = self.get_crew_member(credits, "Director of Photography")
+        writers = self.get_top_writers(credits)
+        stars = self.get_main_actors(credits)
+        wiki_url = await self.get_wiki_url(movie.get("title", ""))
+
+        movie_card_data = {
+            "tmdb_id": tmdb_id,
+            "title": movie.get("title", ""),
+            "director": director,
+            "dop": dop,
+            "writers": writers,
+            "stars": stars,
+            "description": movie.get("overview", ""),
+            "poster_path": (
+                f"https://image.tmdb.org/t/p/original{movie.get('poster_path', '')}"
+                if movie.get("poster_path")
+                else None
+            ),
+            "release_date": movie.get("release_date", ""),
+            "vote_average": movie.get("vote_average", ""),
+            "imdb_id": imdb_id,
+            "wiki_url": wiki_url,
+        }
+
+        logging.info(f"Completed fetching data for movie: {movie_card_data['title']}")
+
+        # Add the fetched data to the cache (SQLite)
+        self.add_to_cache(movie_card_data)
+        return movie_card_data
 
     def get_from_cache(self, key, is_movie=True):
         if is_movie:
-            self.db_cursor.execute(
-                "SELECT * FROM movie_details WHERE tmdb_id = ?", (key,)
-            )
+            self.db_cursor.execute("SELECT * FROM movies WHERE tmdb_id = ?", (key,))
             movie = self.db_cursor.fetchone()
             if movie:
+                # Fetch cast
+                self.db_cursor.execute(
+                    "SELECT p.name, mc.role FROM movie_cast mc JOIN people p ON mc.person_id = p.person_id WHERE mc.movie_id = ?",
+                    (key,),
+                )
+                cast = self.db_cursor.fetchall()
+
+                # Fetch crew (writers and director)
+                self.db_cursor.execute(
+                    "SELECT p.name, mc.job FROM movie_crew mc JOIN people p ON mc.person_id = p.person_id WHERE mc.movie_id = ?",
+                    (key,),
+                )
+                crew = self.db_cursor.fetchall()
+
                 return {
                     "tmdb_id": movie[0],
                     "title": movie[1],
-                    "director": movie[2],
-                    "dop": movie[3],
-                    "writers": movie[4],
-                    "stars": movie[5],
-                    "description": movie[6],
-                    "poster_path": movie[7],
-                    "release_date": movie[8],
-                    "vote_average": movie[9],
-                    "imdb_id": movie[10],
-                    "wiki_url": movie[11],
+                    "description": movie[2],
+                    "poster_path": movie[3],
+                    "release_date": movie[4],
+                    "vote_average": movie[5],
+                    "imdb_id": movie[6],
+                    "wiki_url": movie[7],
+                    "cast": cast,
+                    "crew": crew,
                 }
+            return None
         else:
-            self.db_cursor.execute(
-                "SELECT * FROM person_details WHERE name = ?", (key,)
-            )
+            # Fetch person details
+            self.db_cursor.execute("SELECT * FROM people WHERE name = ?", (key,))
             person = self.db_cursor.fetchone()
             if person:
                 return {
-                    "name": person[0],
-                    "biography": person[1],
-                    "birthday": person[2],
-                    "deathday": person[3],
-                    "place_of_birth": person[4],
-                    "profile_path": person[5],
-                    "movie_credits": json.loads(
-                        person[6]
-                    ),  # Convert JSON string back to object
+                    "person_id": person[0],
+                    "name": person[1],
+                    "biography": person[2],
+                    "birthday": person[3],
+                    "deathday": person[4],
+                    "place_of_birth": person[5],
+                    "profile_path": person[6],
                     "imdb_id": person[7],
                     "wiki_url": person[8],
                 }
-        return None
+            return None
 
     def get_crew_member(self, credits, job_title):
         for crew_member in credits["crew"]:
@@ -322,56 +452,78 @@ class MovieDataBuilder:
         return "Not Available"
 
     async def get_person_details(self, name):
-        cache_key = f"person_{name}"
-        cached_data = self.get_from_cache(cache_key, is_movie=False)
+        """
+        Fetches details for a person by name, including biography, movie credits, and IMDb and Wikipedia links.
+        Caches the data if not already present in the database.
+        """
+        # Check for cached data
+        cached_data = self.get_from_cache(name, is_movie=False)
+        if cached_data:
+            logging.info(f"Cache hit for person: {name}")
+            return cached_data
 
         if not self.session:
             self.session = aiohttp.ClientSession()
 
-        if cached_data:
-            return cached_data
-
         try:
+            # Search for the person using the TMDB API
             person_api = Person()
             search_results = person_api.search(name)
             if not search_results:
+                logging.warning(f"No search results found for person: {name}")
                 return {}
 
+            # Extract the person ID from the search results
             person_id = search_results[0].id
             async with aiohttp.ClientSession() as session:
+                # Fetch detailed information about the person
                 details_url = f"https://api.themoviedb.org/3/person/{person_id}?api_key={self.tmdb.api_key}&language=en-US"
                 person_details = await self.fetch_async_with_session(
                     session, details_url
                 )
                 if not person_details:
+                    logging.warning(f"No detailed information found for person: {name}")
                     return {}
 
+                # Extract person ID from the details for consistency
+                person_id = person_details.get("id")
+                if not person_id:
+                    logging.error(f"Person ID missing in details for: {name}")
+                    return {}
+
+                # Fetch additional information such as IMDb ID and Wikipedia URL
                 imdb_id = await self.get_imdb_id_for_person(
                     person_details.get("name", "")
                 )
                 wiki_url = await self.get_wiki_url(person_details.get("name", ""))
 
+                # Fetch the person's combined credits (movies, TV shows)
                 combined_credits_url = f"https://api.themoviedb.org/3/person/{person_id}/combined_credits?api_key={self.tmdb.api_key}&language=en-US"
                 combined_credits = await self.fetch_async_with_session(
                     session, combined_credits_url
                 )
                 credits_info = self.process_combined_credits(combined_credits)
 
-            # Combine the details and credits to return a single response
-            person_data = {
-                "name": person_details.get("name", ""),
-                "biography": person_details.get("biography", ""),
-                "birthday": person_details.get("birthday", ""),
-                "deathday": person_details.get("deathday", ""),
-                "place_of_birth": person_details.get("place_of_birth", ""),
-                "profile_path": person_details.get("profile_path", ""),
-                "movie_credits": credits_info,
-                "imdb_id": imdb_id,
-                "wiki_url": wiki_url,
-            }
+                # Compile all the gathered information into a dictionary
+                person_data = {
+                    "person_id": person_id,
+                    "name": person_details.get("name", ""),
+                    "biography": person_details.get("biography", ""),
+                    "birthday": person_details.get("birthday", ""),
+                    "deathday": person_details.get("deathday", ""),
+                    "place_of_birth": person_details.get("place_of_birth", ""),
+                    "profile_path": person_details.get("profile_path", ""),
+                    "movie_credits": credits_info,
+                    "imdb_id": imdb_id,
+                    "wiki_url": wiki_url,
+                }
 
-            self.add_to_cache(cache_key, person_data, is_movie=False)
-            return person_data
+                # Cache the person's details in the database
+                self.add_to_cache(person_data, is_movie=False)
+                logging.info(
+                    f"Successfully fetched and cached details for person: {name}"
+                )
+                return person_data
 
         except Exception as e:
             logging.error(f"Error fetching details for person {name}: {e}")
@@ -508,21 +660,42 @@ class MovieDataBuilder:
         people = set()  # Use a set to avoid duplicates
 
         # Extract the director(s), DoP(s), writer(s), and actor(s)
+        # Ensure each entry is a string before adding to the set
         if movie_details.get("director"):
-            directors = movie_details.get("director").split(", ")
-            people.update(directors)
+            director = movie_details.get("director")
+            if isinstance(director, dict) and "name" in director:
+                people.add(director["name"])
+            elif isinstance(director, list):
+                for d in director:
+                    if isinstance(d, dict) and "name" in d:
+                        people.add(d["name"])
 
         if movie_details.get("dop"):
-            dop = movie_details.get("dop").split(", ")
-            people.update(dop)
+            dop = movie_details.get("dop")
+            if isinstance(dop, dict) and "name" in dop:
+                people.add(dop["name"])
+            elif isinstance(dop, list):
+                for d in dop:
+                    if isinstance(d, dict) and "name" in d:
+                        people.add(d["name"])
 
         if movie_details.get("writers"):
-            writers = movie_details.get("writers").split(", ")
-            people.update(writers)
+            writers = movie_details.get("writers")
+            if isinstance(writers, list):
+                for writer in writers:
+                    if isinstance(writer, dict) and "name" in writer:
+                        people.add(writer["name"])
+            elif isinstance(writers, dict) and "name" in writers:
+                people.add(writers["name"])
 
         if movie_details.get("stars"):
-            stars = movie_details.get("stars").split(", ")
-            people.update(stars)
+            stars = movie_details.get("stars")
+            if isinstance(stars, list):
+                for star in stars:
+                    if isinstance(star, dict) and "name" in star:
+                        people.add(star["name"])
+            elif isinstance(stars, dict) and "name" in stars:
+                people.add(stars["name"])
 
         return list(people)
 
@@ -545,7 +718,7 @@ class MovieDataBuilder:
                 return
 
             # Step 2: Store fetched movie details in SQLite
-            self.add_to_cache(movie_id, movie_details, is_movie=True)
+            self.add_to_cache(movie_details, is_movie=True)
             print(f"{movie_title.upper()}: Added movie to database.")
 
             # Step 3: Fetch details for all relevant people (Actors, Directors, Writers, DoP)
@@ -553,9 +726,6 @@ class MovieDataBuilder:
 
             # Sequentially process each person
             for person_name in crew_list:
-                print(
-                    f"{movie_title.upper()}: Fetching movies for person: {person_name}"
-                )
                 await self.fetch_person_and_movies(person_name, movie_title.upper())
 
             print(f"{movie_title.upper()}: Finished data build for movie.")
@@ -590,24 +760,28 @@ class MovieDataBuilder:
         return None
 
     async def fetch_person_and_movies(self, person_name, movie_title):
-        print(f"{movie_title}: Fetching movies for person: {person_name}", flush=True)
-
+        """
+        Fetch movies for a given person if they aren't already present in the database.
+        """
         # Check if the person is already in the database before fetching
+        print(f"{movie_title}: Checking person in database: {person_name}", flush=True)
         person_details = self.get_from_cache(person_name, is_movie=False)
 
-        if not person_details:
-            await self.fetch_person_details(person_name, movie_title)
-            print(
-                f"{movie_title}: Fetched and added person to database: {person_name}",
-                flush=True,
-            )
-        else:
+        if person_details:
             print(
                 f"{movie_title}: Person already in database: {person_name}", flush=True
             )
-            return  # No need to fetch this person again
+            return  # Exit early if the person is already in the database
 
-        # Fetch and store their other movie credits (but no recursion)
+        # If person is not in the database, proceed to fetch their details
+        print(f"{movie_title}: Fetching details for person: {person_name}", flush=True)
+        await self.fetch_person_details(person_name, movie_title)
+        print(
+            f"{movie_title}: Fetched and added person to database: {person_name}",
+            flush=True,
+        )
+
+        # Fetch and store their other movie credits (no recursion)
         star_details = self.get_from_cache(person_name, is_movie=False)
         if star_details:
             movie_fetch_tasks = []  # Collect tasks for fetching each movie
@@ -631,11 +805,8 @@ class MovieDataBuilder:
 
             # Limit concurrent movie fetch tasks and avoid overwhelming the API
             semaphore = asyncio.Semaphore(3)  # Adjust the semaphore value as necessary
-
             async with semaphore:
-                await asyncio.gather(
-                    *movie_fetch_tasks
-                )  # Fetch movie details concurrently
+                await asyncio.gather(*movie_fetch_tasks)
 
             print(
                 f"{movie_title}: Finished fetching movies for person: {person_name}",
@@ -667,7 +838,7 @@ class MovieDataBuilder:
             movie_details_credit = await self.get_movie_card_details(movie_id_credit)
             if movie_details_credit:  # Ensure the movie details are not empty
                 # Store the movie details in SQLite
-                self.add_to_cache(movie_id_credit, movie_details_credit, is_movie=True)
+                self.add_to_cache(movie_id_credit, movie_details_credit)
                 print(f"{movie_title.upper()}: Added movie to database.")
             else:
                 print(f"{movie_title.upper()}: No details found for movie.")
@@ -690,44 +861,63 @@ class MovieDataBuilder:
             )
 
     async def fetch_person_details(self, star_name, movie_title):
+        """
+        Fetches details for a person associated with a specific movie title.
+        Handles rate limiting and retries if necessary.
+        """
+        # Ensure the session is initialized
         if not self.session:
             self.session = aiohttp.ClientSession()
 
         try:
+            # Attempt to fetch the person's details
             person_details = await self.get_person_details(star_name)
             if person_details:
-                # Store person details in SQLite instead of cache
-                self.add_to_cache(star_name, person_details, is_movie=False)
+                # Store the fetched details in the SQLite database
+                self.add_to_cache(person_details, is_movie=False)
                 logging.info(
                     f"{movie_title}: Successfully fetched and added details for person: {star_name}"
                 )
                 print(f"{movie_title}: Added person to database: {star_name}")
             else:
+                logging.warning(
+                    f"{movie_title}: No details found for person: {star_name}"
+                )
                 print(f"{movie_title}: No details found for person: {star_name}")
-        except Exception as e:
-            if (
-                "rate limit" in str(e).lower()
-                or isinstance(e, aiohttp.ClientResponseError)
-                and e.status == 429
-            ):
-                logging.warning(f"{movie_title}: Rate limit hit, pausing for 5 seconds")
-                await asyncio.sleep(5)  # Pause for 5 seconds
-                return await self.fetch_person_details(
+
+        except aiohttp.ClientResponseError as e:
+            # Handle rate limiting or HTTP 429 errors specifically
+            if e.status == 429 or "rate limit" in str(e).lower():
+                logging.warning(
+                    f"{movie_title}: Rate limit hit for {star_name}, retrying after delay..."
+                )
+                await asyncio.sleep(5)  # Wait for 5 seconds before retrying
+                await self.fetch_person_details(
                     star_name, movie_title
                 )  # Retry the request
             else:
                 logging.error(
-                    f"{movie_title}: Failed to fetch details for person: {star_name}. Error: {e}"
+                    f"{movie_title}: HTTP error while fetching details for {star_name}: {e}"
                 )
                 print(
                     f"{movie_title}: Error occurred while processing person: {star_name}, Error: {e}"
                 )
 
-    def get_main_actors(
-        self, credits, count=1000
-    ):  # Assuming 1000 is a large enough number to include all actors
-        actors = [member["name"] for member in credits["cast"]][:count]
-        return ", ".join(actors) if actors else "Not Available"
+        except Exception as e:
+            # Handle any other unexpected exceptions
+            logging.error(
+                f"{movie_title}: Unexpected error while fetching details for {star_name}: {e}"
+            )
+            print(
+                f"{movie_title}: Error occurred while processing person: {star_name}, Error: {e}"
+            )
+
+    def get_main_actors(self, credits, count=5):
+        actors = [
+            {"name": member["name"], "person_id": member["id"]}
+            for member in credits.get("cast", [])
+        ][:count]
+        return actors if actors else [{"name": "Not Available", "person_id": None}]
 
     def get_top_writers(self, credits, count=5):
         writers = [

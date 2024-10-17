@@ -20,7 +20,7 @@ class DataManager:
         self.cache_file = "cache.json"  # Path to the JSON cache file
 
         # Relative path to movies.db from the current file
-        db_path = os.path.join(os.path.dirname(__file__), "movies.db")
+        db_path = os.path.join(os.path.dirname(__file__), "database.db")
 
         # Initialize SQLite connection and cursor
         self.db_conn = sqlite3.connect(db_path)
