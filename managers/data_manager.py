@@ -48,9 +48,8 @@ class DataManager:
             # Fetch movie details from the database
             logging.debug(f"Looking for movie with tmdb_id {key} in the database")
             self.db_cursor.execute("SELECT * FROM movies WHERE tmdb_id = ?", (key,))
-            data = self.db_cursor.fetchone()  # Fetch one result
+            data = self.db_cursor.fetchone()
             if data:
-                # Convert the result to a dictionary to match previous JSON cache structure
                 movie_data = {
                     "tmdb_id": data[0],
                     "title": data[1],
@@ -70,27 +69,35 @@ class DataManager:
             # Fetch person details from the database
             logging.debug(f"Looking for person with name {key} in the database")
             self.db_cursor.execute("SELECT * FROM people WHERE name = ?", (key,))
-            data = self.db_cursor.fetchone()  # Fetch one result
+            data = self.db_cursor.fetchone()
             if data:
-                # Convert the result to a dictionary to match previous JSON cache structure
+                try:
+                    movie_credits = json.loads(data[6]) if data[6] else []
+                except json.JSONDecodeError as e:
+                    logging.error(f"Failed to decode movie credits JSON: {e}")
+                    movie_credits = []
+
                 person_data = {
-                    "name": data[0],
-                    "biography": data[1],
-                    "birthday": data[2],
-                    "deathday": data[3],
-                    "place_of_birth": data[4],
-                    "profile_path": data[5],
-                    "movie_credits": json.loads(
-                        data[6]
-                    ),  # Assuming stored as JSON in DB
+                    "person_id": data[0],
+                    "name": data[1],
+                    "biography": data[2],
+                    "birthday": data[3],
+                    "deathday": data[4],
+                    "place_of_birth": data[5],
+                    "profile_path": (
+                        f"https://image.tmdb.org/t/p/original{data[6]}"
+                        if data[6]
+                        else None
+                    ),
                     "imdb_id": data[7],
                     "wiki_url": data[8],
+                    "movie_credits": movie_credits,
                 }
                 logging.debug(f"Cache hit for person: {key}")
                 return person_data
             else:
                 logging.debug(f"Cache miss for person: {key}")
-            return None
+                return None
 
     def add_to_cache(self, movie_data, is_movie=True):
         if is_movie:
@@ -113,43 +120,6 @@ class DataManager:
                 ),
             )
             logging.info(f"Added movie to database: {movie_data['title']}")
-
-            # Insert cast (stars) into the 'movie_cast' table
-            for star in movie_data.get("stars", []):
-                if isinstance(star, dict) and "person_id" in star:
-                    self.db_cursor.execute(
-                        """
-                        INSERT OR IGNORE INTO movie_cast
-                        (movie_id, person_id, role)
-                        VALUES (?, ?, ?)
-                        """,
-                        (movie_data["tmdb_id"], star["person_id"], "Actor"),
-                    )
-                    logging.info(f"Added actor to database: {star['name']}")
-
-            # Insert crew members into the 'movie_crew' table
-            crew_roles = {
-                "Director": movie_data.get("director", []),
-                "Director of Photography": movie_data.get("dop", []),
-                "Writer": movie_data.get("writers", []),
-            }
-
-            for role, members in crew_roles.items():
-                # Ensure members is a list before iterating
-                if not isinstance(members, list):
-                    members = [members]
-                for member in members:
-                    if isinstance(member, dict) and "person_id" in member:
-                        self.db_cursor.execute(
-                            """
-                            INSERT OR IGNORE INTO movie_crew
-                            (movie_id, person_id, job)
-                            VALUES (?, ?, ?)
-                            """,
-                            (movie_data["tmdb_id"], member["person_id"], role),
-                        )
-                        logging.info(f"Added {role} to database: {member['name']}")
-
         else:
             # Insert or replace person details into the 'people' table
             self.db_cursor.execute(
@@ -172,7 +142,6 @@ class DataManager:
             )
             logging.info(f"Added person to database: {movie_data['name']}")
 
-        # Commit changes to the database
         self.db_conn.commit()
 
     def update_tmdb_api_key(self):
@@ -391,50 +360,48 @@ class DataManager:
 
     def get_person_details(self, name):
         """Retrieve person details from the database or TMDb."""
-        # Check if person details exist in the database
         cached_data = self.get_from_cache(name, is_movie=False)
 
         if cached_data:
+            logging.debug(f"Returning person details: {cached_data}")
             return cached_data
 
-        # If not in database, fetch from the API
+        # Fetch from API if not found in database
         person_api = Person()
         search_results = person_api.search(name)
-
         if search_results:
             person_id = search_results[0].id
-
-            # Fetch the person details
             person_details = person_api.details(person_id)
             imdb_id = self.get_imdb_id_for_person(person_details.name)
-
-            # Fetch combined credits for the person
-            combined_credits_url = f"https://api.themoviedb.org/3/person/{person_id}/combined_credits?api_key={self.tmdb.api_key}&language=en-US"
+            combined_credits_url = (
+                f"https://api.themoviedb.org/3/person/{person_id}/combined_credits"
+                f"?api_key={self.tmdb.api_key}&language=en-US"
+            )
             response = requests.get(combined_credits_url)
-            if response.status_code == 200:
-                combined_credits = response.json()
-                credits_info = self.process_combined_credits(combined_credits)
-            else:
-                credits_info = []
+            credits_info = (
+                self.process_combined_credits(response.json())
+                if response.status_code == 200
+                else []
+            )
 
-            # Get Wikipedia URL
-            wiki_url = self.get_wiki_url(person_details.name)
-
-            # Combine the details and store them in the database
             person_data = {
+                "person_id": person_id,
                 "name": person_details.name,
-                "biography": person_details.biography,
-                "birthday": person_details.birthday,
-                "deathday": person_details.deathday,
-                "place_of_birth": person_details.place_of_birth,
-                "profile_path": person_details.profile_path,
-                "movie_credits": credits_info,
+                "biography": person_details.biography or "Biography not available",
+                "birthday": person_details.birthday or "Unknown",
+                "deathday": person_details.deathday or "N/A",
+                "place_of_birth": person_details.place_of_birth or "Unknown",
+                "profile_path": (
+                    f"https://image.tmdb.org/t/p/original{person_details.profile_path}"
+                    if person_details.profile_path
+                    else None
+                ),
                 "imdb_id": imdb_id,
-                "wiki_url": wiki_url,
+                "wiki_url": self.get_wiki_url(person_details.name),
+                "movie_credits": credits_info,
             }
 
-            # Store person details in the database
-            self.add_to_cache(name, person_data, is_movie=False)
+            self.add_to_cache(person_data, is_movie=False)
             return person_data
 
         return {}
