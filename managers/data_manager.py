@@ -156,11 +156,12 @@ class DataManager:
         """Fetch combined movie and TV credits for a person."""
         # Check if credits already exist in the database for this person
         self.db_cursor.execute(
-            "SELECT movie_credits FROM person_details WHERE imdb_id = ?", (person_id,)
+            "SELECT movie_credits FROM people WHERE person_id = ?", (person_id,)
         )
         cached_credits = self.db_cursor.fetchone()
 
-        if cached_credits:
+        if cached_credits and cached_credits[0]:
+            # Parse and return the stored credits
             return json.loads(cached_credits[0])
 
         # If not in database, fetch from the API
@@ -168,24 +169,26 @@ class DataManager:
         response = requests.get(url)
         if response.status_code == 200:
             credits = response.json()
+            credits_info = self.process_combined_credits(credits)
 
-            # Process credits and store them in the database
+            # Store credits in the database for future use
             self.db_cursor.execute(
                 """
-                UPDATE person_details
+                UPDATE people
                 SET movie_credits = ?
-                WHERE imdb_id = ?
-            """,
-                (json.dumps(credits), person_id),
+                WHERE person_id = ?
+                """,
+                (json.dumps(credits_info), person_id),
             )
-
             self.db_conn.commit()
-            return credits
+
+            return credits_info
         else:
-            return {}
+            logging.error(f"Failed to fetch combined credits for person_id {person_id}")
+            return []
 
     def process_combined_credits(self, combined_credits):
-        """Format the combined credits data and filter for feature films."""
+        """Format the combined credits data for display."""
         feature_film_genre_ids = {
             12,
             14,
@@ -204,35 +207,40 @@ class DataManager:
             10749,
             10751,
             10752,
-        }  # IDs of typical feature film genres
-        min_vote_count = 50  # Minimum vote count threshold
-        seen_titles = set()  # To track titles and avoid duplicates
-
+        }
+        min_vote_count = 50
         formatted_credits = []
 
-        # Process cast credits
-        for credit in combined_credits.get("cast", []):
-            if (
-                "release_date" in credit
-                and "genre_ids" in credit
-                and credit.get("vote_count", 0) >= min_vote_count
-            ):
-                if not feature_film_genre_ids.isdisjoint(set(credit["genre_ids"])):
-                    self.add_formatted_credit(credit, formatted_credits, seen_titles)
+        # Process both cast and crew credits
+        for credit_type in ["cast", "crew"]:
+            for credit in combined_credits.get(credit_type, []):
+                # Ensure that the credit has a release date and sufficient votes
+                if (
+                    "release_date" in credit
+                    and credit.get("vote_count", 0) >= min_vote_count
+                    and any(
+                        genre in credit.get("genre_ids", [])
+                        for genre in feature_film_genre_ids
+                    )
+                ):
+                    # Create a formatted dictionary for the credit
+                    credit_info = {
+                        "title": credit.get("title", credit.get("name", "N/A")),
+                        "release_year": credit.get("release_date", "N/A").split("-")[0],
+                        "role": (
+                            credit.get("job", "Actor")
+                            if credit_type == "crew"
+                            else "Actor"
+                        ),
+                        "popularity": credit.get("popularity", 0),
+                        "vote_average": credit.get("vote_average", 0),
+                    }
+                    formatted_credits.append(credit_info)
 
-        # Process crew credits, particularly for directing
-        for credit in combined_credits.get("crew", []):
-            if (
-                credit.get("job") == "Director"
-                and "release_date" in credit
-                and credit.get("vote_count", 0) >= min_vote_count
-            ):
-                self.add_formatted_credit(credit, formatted_credits, seen_titles)
-
-        # Sort by release year in descending order
+        # Sort credits by release year (descending) and popularity
         return sorted(
             formatted_credits,
-            key=lambda x: (x["release_year"], -x.get("popularity", 0)),
+            key=lambda x: (x["release_year"], -x["popularity"]),
             reverse=True,
         )
 
@@ -373,16 +381,7 @@ class DataManager:
             person_id = search_results[0].id
             person_details = person_api.details(person_id)
             imdb_id = self.get_imdb_id_for_person(person_details.name)
-            combined_credits_url = (
-                f"https://api.themoviedb.org/3/person/{person_id}/combined_credits"
-                f"?api_key={self.tmdb.api_key}&language=en-US"
-            )
-            response = requests.get(combined_credits_url)
-            credits_info = (
-                self.process_combined_credits(response.json())
-                if response.status_code == 200
-                else []
-            )
+            credits_info = self.get_combined_credits(person_id)
 
             person_data = {
                 "person_id": person_id,
