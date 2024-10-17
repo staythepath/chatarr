@@ -1,173 +1,164 @@
 import sqlite3
 import logging
 
-# Set up logging for easier debugging and output viewing
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
 
-def connect_to_db(db_path="database.db"):
-    """
-    Establish a connection to the SQLite database.
-    """
-    try:
-        conn = sqlite3.connect(db_path)
-        logging.info(f"Connected to database at {db_path}")
-        return conn
-    except sqlite3.Error as e:
-        logging.error(f"Error connecting to database: {e}")
-        return None
-
-
-def get_movie_details(conn, movie_title):
-    """
-    Retrieve details of a movie by its title.
-    """
+def test_database_integrity(db_path="database.db"):
+    # Connect to the database
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
+
+    # Movies to check
+    movie_titles = ["Tenet", "Interstellar", "The Dark Knight", "Pulp Fiction"]
+
+    # Verify each movie exists in the database
+    for title in movie_titles:
+        cursor.execute("SELECT * FROM movies WHERE title = ?", (title,))
+        movie = cursor.fetchone()
+        if movie:
+            logging.info(f"Movie '{title}' found in 'movies' table with ID {movie[0]}.")
+        else:
+            logging.error(f"Movie '{title}' not found in 'movies' table.")
+
+    # Verify cast for each movie
+    for title in movie_titles:
+        cursor.execute("SELECT tmdb_id FROM movies WHERE title = ?", (title,))
+        movie_id = cursor.fetchone()
+        if movie_id:
+            movie_id = movie_id[0]
+            cursor.execute(
+                """
+                SELECT p.name, mc.role FROM movie_cast mc
+                JOIN people p ON mc.person_id = p.person_id
+                WHERE mc.movie_id = ?
+            """,
+                (movie_id,),
+            )
+            cast = cursor.fetchall()
+            if cast:
+                logging.info(f"Cast for movie '{title}': {cast}")
+            else:
+                logging.error(f"No cast found for movie '{title}'.")
+
+    # Verify crew for each movie
+    for title in movie_titles:
+        cursor.execute("SELECT tmdb_id FROM movies WHERE title = ?", (title,))
+        movie_id = cursor.fetchone()
+        if movie_id:
+            movie_id = movie_id[0]
+            cursor.execute(
+                """
+                SELECT p.name, mc.job FROM movie_crew mc
+                JOIN people p ON mc.person_id = p.person_id
+                WHERE mc.movie_id = ?
+            """,
+                (movie_id,),
+            )
+            crew = cursor.fetchall()
+            if crew:
+                logging.info(f"Crew for movie '{title}': {crew}")
+            else:
+                logging.error(f"No crew found for movie '{title}'.")
+
+    # Verify uniqueness in the 'people' table
     cursor.execute(
         """
-        SELECT tmdb_id, title, description, release_date, vote_average, imdb_id, wiki_url
-        FROM movies WHERE title = ?
-    """,
-        (movie_title,),
+        SELECT name, COUNT(*) FROM people GROUP BY name HAVING COUNT(*) > 1
+    """
     )
-    movie = cursor.fetchone()
-
-    if movie:
-        movie_details = {
-            "TMDb ID": movie[0],
-            "Title": movie[1],
-            "Description": movie[2],
-            "Release Date": movie[3],
-            "Vote Average": movie[4],
-            "IMDb ID": movie[5],
-            "Wikipedia URL": movie[6],
-        }
-        logging.info(f"Details for movie '{movie_title}': {movie_details}")
-        return movie_details
+    duplicates = cursor.fetchall()
+    if duplicates:
+        logging.warning(f"Duplicate entries found in 'people' table: {duplicates}")
     else:
-        logging.warning(f"Movie '{movie_title}' not found in database.")
-        return None
+        logging.info("No duplicate entries found in 'people' table.")
 
+    # Verify uniqueness in 'movie_crew' (no duplicate roles)
+    for title in movie_titles:
+        cursor.execute("SELECT tmdb_id FROM movies WHERE title = ?", (title,))
+        movie_id = cursor.fetchone()
+        if movie_id:
+            movie_id = movie_id[0]
+            cursor.execute(
+                """
+                SELECT p.name, mc.job, COUNT(*)
+                FROM movie_crew mc
+                JOIN people p ON mc.person_id = p.person_id
+                WHERE mc.movie_id = ?
+                GROUP BY p.name, mc.job
+                HAVING COUNT(*) > 1
+            """,
+                (movie_id,),
+            )
+            duplicate_roles = cursor.fetchall()
+            if duplicate_roles:
+                logging.warning(
+                    f"Duplicate roles found in 'movie_crew' for '{title}': {duplicate_roles}"
+                )
+            else:
+                logging.info(f"No duplicate roles found in 'movie_crew' for '{title}'.")
 
-def get_movie_cast(conn, movie_id):
-    """
-    Retrieve the cast for a movie by its TMDb ID.
-    """
-    cursor = conn.cursor()
+    # Verify consistency between 'people' and 'movie_cast'/'movie_crew'
     cursor.execute(
         """
-        SELECT p.name, mc.role FROM movie_cast mc
-        JOIN people p ON mc.person_id = p.person_id
-        WHERE mc.movie_id = ?
-    """,
-        (movie_id,),
+        SELECT mc.person_id FROM movie_cast mc
+        LEFT JOIN people p ON mc.person_id = p.person_id
+        WHERE p.person_id IS NULL
+    """
     )
-    cast = cursor.fetchall()
-
-    if cast:
-        logging.info(
-            f"Cast for movie ID {movie_id}: {[f'{c[0]} as {c[1]}' for c in cast]}"
-        )
+    missing_cast_links = cursor.fetchall()
+    if missing_cast_links:
+        logging.error(f"Orphaned cast entries found: {missing_cast_links}")
     else:
-        logging.warning(f"No cast found for movie ID {movie_id}.")
+        logging.info("All cast entries are correctly linked to 'people'.")
 
-    return cast
-
-
-def get_movie_crew(conn, movie_id):
-    """
-    Retrieve the crew (director, writer, DOP) for a movie by its TMDb ID.
-    """
-    cursor = conn.cursor()
     cursor.execute(
         """
-        SELECT p.name, mc.job FROM movie_crew mc
-        JOIN people p ON mc.person_id = p.person_id
-        WHERE mc.movie_id = ?
-    """,
-        (movie_id,),
+        SELECT mc.person_id FROM movie_crew mc
+        LEFT JOIN people p ON mc.person_id = p.person_id
+        WHERE p.person_id IS NULL
+    """
     )
-    crew = cursor.fetchall()
-
-    if crew:
-        logging.info(
-            f"Crew for movie ID {movie_id}: {[f'{c[0]} as {c[1]}' for c in crew]}"
-        )
+    missing_crew_links = cursor.fetchall()
+    if missing_crew_links:
+        logging.error(f"Orphaned crew entries found: {missing_crew_links}")
     else:
-        logging.warning(f"No crew found for movie ID {movie_id}.")
+        logging.info("All crew entries are correctly linked to 'people'.")
 
-    return crew
+    # Close the database connection
+    conn.close()
 
 
-def get_person_details(conn, person_name):
-    """
-    Retrieve details of a person by their name.
-    """
+def test_people_details(db_path="database.db"):
+    # Connect to the database
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
+
+    # Query all person IDs from the movie_cast and movie_crew tables
     cursor.execute(
         """
-        SELECT person_id, name, biography, birthday, deathday, place_of_birth, imdb_id, wiki_url
-        FROM people WHERE name = ?
-    """,
-        (person_name,),
+        SELECT DISTINCT person_id FROM movie_cast
+        UNION
+        SELECT DISTINCT person_id FROM movie_crew
+    """
     )
-    person = cursor.fetchone()
+    person_ids = cursor.fetchall()
 
-    if person:
-        person_details = {
-            "Person ID": person[0],
-            "Name": person[1],
-            "Biography": person[2],
-            "Birthday": person[3],
-            "Deathday": person[4],
-            "Place of Birth": person[5],
-            "IMDb ID": person[6],
-            "Wikipedia URL": person[7],
-        }
-        logging.info(f"Details for person '{person_name}': {person_details}")
-        return person_details
-    else:
-        logging.warning(f"Person '{person_name}' not found in database.")
-        return None
+    # Check if each person has their details in the 'people' table
+    for (person_id,) in person_ids:
+        cursor.execute("SELECT * FROM people WHERE person_id = ?", (person_id,))
+        person = cursor.fetchone()
+        if person:
+            logging.info(f"Person with ID {person_id} has complete details: {person}")
+        else:
+            logging.error(f"Person with ID {person_id} is missing from 'people' table.")
 
-
-def test_database(conn):
-    """
-    Test function to check details of 'Interstellar' and 'The Dark Knight' and their respective people.
-    """
-    # Movies to test
-    movies_to_test = ["Interstellar", "The Dark Knight"]
-    for movie_title in movies_to_test:
-        movie_details = get_movie_details(conn, movie_title)
-        if movie_details:
-            movie_id = movie_details["TMDb ID"]
-            get_movie_cast(conn, movie_id)
-            get_movie_crew(conn, movie_id)
-
-    # People to test (directors, DOPs, and notable actors for both movies)
-    people_to_test = [
-        "Christopher Nolan",
-        "Jonathan Nolan",
-        "Hans Zimmer",
-        "Matthew McConaughey",
-        "Anne Hathaway",
-        "Michael Caine",
-        "Heath Ledger",
-        "Wally Pfister",
-    ]
-    for person_name in people_to_test:
-        get_person_details(conn, person_name)
-
-
-def main():
-    conn = connect_to_db()
-    if conn:
-        test_database(conn)
-        conn.close()
-        logging.info("Database connection closed.")
+    # Close the database connection
+    conn.close()
 
 
 if __name__ == "__main__":
-    main()
+    test_database_integrity()
+    test_people_details()

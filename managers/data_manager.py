@@ -9,6 +9,7 @@ import logging
 import asyncio
 import aiohttp
 import sqlite3
+import json
 
 
 class DataManager:
@@ -46,25 +47,19 @@ class DataManager:
         if is_movie:
             # Fetch movie details from the database
             logging.debug(f"Looking for movie with tmdb_id {key} in the database")
-            self.db_cursor.execute(
-                "SELECT * FROM movie_details WHERE tmdb_id = ?", (key,)
-            )
+            self.db_cursor.execute("SELECT * FROM movies WHERE tmdb_id = ?", (key,))
             data = self.db_cursor.fetchone()  # Fetch one result
             if data:
                 # Convert the result to a dictionary to match previous JSON cache structure
                 movie_data = {
                     "tmdb_id": data[0],
                     "title": data[1],
-                    "director": data[2],
-                    "dop": data[3],
-                    "writers": data[4],
-                    "stars": data[5],
-                    "description": data[6],
-                    "poster_path": data[7],
-                    "release_date": data[8],
-                    "vote_average": data[9],
-                    "imdb_id": data[10],
-                    "wiki_url": data[11],
+                    "description": data[2],
+                    "poster_path": data[3],
+                    "release_date": data[4],
+                    "vote_average": data[5],
+                    "imdb_id": data[6],
+                    "wiki_url": data[7],
                 }
                 logging.debug(f"Cache hit for movie: {key}")
                 return movie_data
@@ -74,9 +69,7 @@ class DataManager:
         else:
             # Fetch person details from the database
             logging.debug(f"Looking for person with name {key} in the database")
-            self.db_cursor.execute(
-                "SELECT * FROM person_details WHERE name = ?", (key,)
-            )
+            self.db_cursor.execute("SELECT * FROM people WHERE name = ?", (key,))
             data = self.db_cursor.fetchone()  # Fetch one result
             if data:
                 # Convert the result to a dictionary to match previous JSON cache structure
@@ -97,59 +90,90 @@ class DataManager:
                 return person_data
             else:
                 logging.debug(f"Cache miss for person: {key}")
-                return None
+            return None
 
-    def add_to_cache(self, key, data, is_movie=True):
-        """Add an item to the database."""
+    def add_to_cache(self, movie_data, is_movie=True):
         if is_movie:
-            # Insert or update movie details in the database
+            # Insert or replace movie details into the 'movies' table
             self.db_cursor.execute(
                 """
-                INSERT OR REPLACE INTO movie_details 
-                (tmdb_id, title, director, dop, writers, stars, description, poster_path, release_date, vote_average, imdb_id, wiki_url)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
+                INSERT OR REPLACE INTO movies
+                (tmdb_id, title, description, poster_path, release_date, vote_average, imdb_id, wiki_url)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
                 (
-                    data["tmdb_id"],
-                    data["title"],
-                    data["director"],
-                    data["dop"],
-                    data["writers"],
-                    data["stars"],
-                    data["description"],
-                    data["poster_path"],
-                    data["release_date"],
-                    data["vote_average"],
-                    data["imdb_id"],
-                    data["wiki_url"],
+                    movie_data["tmdb_id"],
+                    movie_data["title"],
+                    movie_data["description"],
+                    movie_data["poster_path"],
+                    movie_data["release_date"],
+                    movie_data["vote_average"],
+                    movie_data["imdb_id"],
+                    movie_data["wiki_url"],
                 ),
             )
+            logging.info(f"Added movie to database: {movie_data['title']}")
+
+            # Insert cast (stars) into the 'movie_cast' table
+            for star in movie_data.get("stars", []):
+                if isinstance(star, dict) and "person_id" in star:
+                    self.db_cursor.execute(
+                        """
+                        INSERT OR IGNORE INTO movie_cast
+                        (movie_id, person_id, role)
+                        VALUES (?, ?, ?)
+                        """,
+                        (movie_data["tmdb_id"], star["person_id"], "Actor"),
+                    )
+                    logging.info(f"Added actor to database: {star['name']}")
+
+            # Insert crew members into the 'movie_crew' table
+            crew_roles = {
+                "Director": movie_data.get("director", []),
+                "Director of Photography": movie_data.get("dop", []),
+                "Writer": movie_data.get("writers", []),
+            }
+
+            for role, members in crew_roles.items():
+                # Ensure members is a list before iterating
+                if not isinstance(members, list):
+                    members = [members]
+                for member in members:
+                    if isinstance(member, dict) and "person_id" in member:
+                        self.db_cursor.execute(
+                            """
+                            INSERT OR IGNORE INTO movie_crew
+                            (movie_id, person_id, job)
+                            VALUES (?, ?, ?)
+                            """,
+                            (movie_data["tmdb_id"], member["person_id"], role),
+                        )
+                        logging.info(f"Added {role} to database: {member['name']}")
+
         else:
-            # Insert or update person details in the database
+            # Insert or replace person details into the 'people' table
             self.db_cursor.execute(
                 """
-                INSERT OR REPLACE INTO person_details 
-                (name, biography, birthday, deathday, place_of_birth, profile_path, movie_credits, imdb_id, wiki_url)
+                INSERT OR REPLACE INTO people
+                (person_id, name, biography, birthday, deathday, place_of_birth, profile_path, imdb_id, wiki_url)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
+                """,
                 (
-                    data["name"],
-                    data["biography"],
-                    data["birthday"],
-                    data["deathday"],
-                    data["place_of_birth"],
-                    data["profile_path"],
-                    json.dumps(
-                        data["movie_credits"]
-                    ),  # Convert list back to JSON string
-                    data["imdb_id"],
-                    data["wiki_url"],
+                    movie_data["person_id"],
+                    movie_data["name"],
+                    movie_data["biography"],
+                    movie_data["birthday"],
+                    movie_data["deathday"],
+                    movie_data["place_of_birth"],
+                    movie_data["profile_path"],
+                    movie_data["imdb_id"],
+                    movie_data["wiki_url"],
                 ),
             )
+            logging.info(f"Added person to database: {movie_data['name']}")
 
         # Commit changes to the database
         self.db_conn.commit()
-        logging.debug(f"Added {key} to database.")
 
     def update_tmdb_api_key(self):
         self.tmdb.api_key = self.config_manager.get_config_value("tmdb_api_key")
@@ -305,6 +329,20 @@ class DataManager:
 
         if cached_data:
             logging.debug(f"Movie found in database: {cached_data}")
+
+            # Fetch the director, DoP, writers, and stars from the database
+            cached_data["director"] = self.get_crew_members(
+                cached_data["tmdb_id"], "Director"
+            )
+            cached_data["dop"] = self.get_crew_members(
+                cached_data["tmdb_id"], "Director of Photography"
+            )
+            cached_data["writers"] = self.get_crew_members(
+                cached_data["tmdb_id"], "Writer"
+            )
+            cached_data["stars"] = self.get_main_actors(cached_data["tmdb_id"])
+
+            logging.debug(f"Returning movie card data: {cached_data}")
             return cached_data
 
         # If not found in the database, fetch from the API
@@ -434,21 +472,33 @@ class DataManager:
 
         return formatted_credits
 
-    def get_crew_member(self, credits, job_title):
-        for crew_member in credits["crew"]:
-            if crew_member["job"] == job_title:
-                return crew_member["name"]
-        return "Not Available"
+    def get_crew_members(self, movie_id, job_title):
+        # Fetch crew members with the specified job title from the 'movie_crew' table
+        self.db_cursor.execute(
+            """
+            SELECT p.name 
+            FROM movie_crew mc
+            JOIN people p ON mc.person_id = p.person_id
+            WHERE mc.movie_id = ? AND mc.job = ?
+            """,
+            (movie_id, job_title),
+        )
+        crew_members = [row[0] for row in self.db_cursor.fetchall()]
+        return ", ".join(crew_members) if crew_members else "Not Available"
 
-    def get_crew_members(self, credits, job_title):
-        return [
-            member["name"] for member in credits["crew"] if member["job"] == job_title
-        ]
-
-    def get_main_actors(
-        self, credits, count=1000
-    ):  # Assuming 1000 is a large enough number to include all actors
-        actors = [member["name"] for member in credits["cast"]][:count]
+    def get_main_actors(self, movie_id, count=15):
+        # Fetch main actors from the 'movie_cast' table
+        self.db_cursor.execute(
+            """
+            SELECT p.name
+            FROM movie_cast mc
+            JOIN people p ON mc.person_id = p.person_id
+            WHERE mc.movie_id = ? AND mc.role = 'Actor'
+            LIMIT ?
+            """,
+            (movie_id, count),
+        )
+        actors = [row[0] for row in self.db_cursor.fetchall()]
         return ", ".join(actors) if actors else "Not Available"
 
     def get_top_writers(self, credits, count=5):
