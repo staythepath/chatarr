@@ -148,8 +148,7 @@ class MovieDataBuilder:
 
     def add_to_cache(self, movie_data, is_movie=True):
         if is_movie:
-            # Insert movie details into the 'movies' table
-
+            # Insert or replace movie details into the 'movies' table
             self.db_cursor.execute(
                 """
                 INSERT OR REPLACE INTO movies
@@ -167,52 +166,64 @@ class MovieDataBuilder:
                     movie_data["wiki_url"],
                 ),
             )
+            logging.info(f"Added movie to database: {movie_data['title']}")
 
             # Insert cast (stars) into the 'movie_cast' table
-            # Insert cast (stars) into the 'movie_cast' table, using an empty list if 'stars' is missing
             for star in movie_data.get("stars", []):
                 if isinstance(star, dict) and "person_id" in star:
+                    # Check if the entry already exists
                     self.db_cursor.execute(
                         """
-                        INSERT OR REPLACE INTO movie_cast
-                        (movie_id, person_id, role)
-                        VALUES (?, ?, ?)
+                        SELECT 1 FROM movie_cast
+                        WHERE movie_id = ? AND person_id = ? AND role = ?
                         """,
                         (movie_data["tmdb_id"], star["person_id"], "Actor"),
                     )
+                    exists = self.db_cursor.fetchone()
 
-            # Insert writers into the 'movie_crew' table, using an empty list if 'writers' is missing
-            for writer in movie_data.get("writers", []):
-                if isinstance(writer, dict) and "person_id" in writer:
-                    self.db_cursor.execute(
-                        """
-                        INSERT OR REPLACE INTO movie_crew
-                        (movie_id, person_id, job)
-                        VALUES (?, ?, ?)
-                        """,
-                        (movie_data["tmdb_id"], writer["person_id"], "Writer"),
-                    )
+                    if not exists:
+                        self.db_cursor.execute(
+                            """
+                            INSERT INTO movie_cast
+                            (movie_id, person_id, role)
+                            VALUES (?, ?, ?)
+                            """,
+                            (movie_data["tmdb_id"], star["person_id"], "Actor"),
+                        )
+                        logging.info(f"Added actor to database: {star['name']}")
 
-            # Insert director into the 'movie_crew' table, using a dictionary with 'Not Available' if 'director' is missing
-            director = movie_data.get("director", {})
+            # Insert director into the 'movie_crew' table
+            director = movie_data.get("director", [{}])[0]
             if isinstance(director, dict) and "person_id" in director:
+                # Check if the entry already exists
                 self.db_cursor.execute(
                     """
-                    INSERT OR REPLACE INTO movie_crew
-                    (movie_id, person_id, job)
-                    VALUES (?, ?, ?)
+                    SELECT 1 FROM movie_crew
+                    WHERE movie_id = ? AND person_id = ? AND job = ?
                     """,
                     (movie_data["tmdb_id"], director["person_id"], "Director"),
                 )
+                exists = self.db_cursor.fetchone()
 
-            # Insert DOP into the 'movie_crew' table, using a dictionary with 'Not Available' if 'dop' is missing
-            dop = movie_data.get("dop", {})
+                if not exists:
+                    self.db_cursor.execute(
+                        """
+                        INSERT INTO movie_crew
+                        (movie_id, person_id, job)
+                        VALUES (?, ?, ?)
+                        """,
+                        (movie_data["tmdb_id"], director["person_id"], "Director"),
+                    )
+                    logging.info(f"Added director to database: {director['name']}")
+
+            # Insert DOP into the 'movie_crew' table
+            dop = movie_data.get("dop", [{}])[0]
             if isinstance(dop, dict) and "person_id" in dop:
+                # Check if the entry already exists
                 self.db_cursor.execute(
                     """
-                    INSERT OR REPLACE INTO movie_crew
-                    (movie_id, person_id, job)
-                    VALUES (?, ?, ?)
+                    SELECT 1 FROM movie_crew
+                    WHERE movie_id = ? AND person_id = ? AND job = ?
                     """,
                     (
                         movie_data["tmdb_id"],
@@ -220,9 +231,49 @@ class MovieDataBuilder:
                         "Director of Photography",
                     ),
                 )
+                exists = self.db_cursor.fetchone()
+
+                if not exists:
+                    self.db_cursor.execute(
+                        """
+                        INSERT INTO movie_crew
+                        (movie_id, person_id, job)
+                        VALUES (?, ?, ?)
+                        """,
+                        (
+                            movie_data["tmdb_id"],
+                            dop["person_id"],
+                            "Director of Photography",
+                        ),
+                    )
+                    logging.info(f"Added DOP to database: {dop['name']}")
+
+            # Insert writers into the 'movie_crew' table
+            for writer in movie_data.get("writers", []):
+                if isinstance(writer, dict) and "person_id" in writer:
+                    # Check if the entry already exists
+                    self.db_cursor.execute(
+                        """
+                        SELECT 1 FROM movie_crew
+                        WHERE movie_id = ? AND person_id = ? AND job = ?
+                        """,
+                        (movie_data["tmdb_id"], writer["person_id"], "Writer"),
+                    )
+                    exists = self.db_cursor.fetchone()
+
+                    if not exists:
+                        self.db_cursor.execute(
+                            """
+                            INSERT INTO movie_crew
+                            (movie_id, person_id, job)
+                            VALUES (?, ?, ?)
+                            """,
+                            (movie_data["tmdb_id"], writer["person_id"], "Writer"),
+                        )
+                        logging.info(f"Added writer to database: {writer['name']}")
 
         else:
-            # Insert person details into the 'people' table
+            # Insert or replace person details into the 'people' table
             self.db_cursor.execute(
                 """
                 INSERT OR REPLACE INTO people
@@ -241,7 +292,9 @@ class MovieDataBuilder:
                     movie_data["wiki_url"],
                 ),
             )
+            logging.info(f"Added person to database: {movie_data['name']}")
 
+        # Commit changes to the database
         self.db_conn.commit()
 
     def process_combined_credits(self, combined_credits):
@@ -258,18 +311,15 @@ class MovieDataBuilder:
             37,
             53,
             80,
-            # 99,
             878,
             9648,
             10402,
             10749,
             10751,
             10752,
-            # 10770,
-        }  # IDs of typical feature film genres
-        min_vote_count = 50  # Minimum vote count threshold
-        seen_titles = set()  # To track titles and avoid duplicates
-
+        }
+        min_vote_count = 50
+        seen_titles = set()
         formatted_credits = []
 
         # Process cast credits
@@ -280,22 +330,17 @@ class MovieDataBuilder:
                 and credit.get("vote_count", 0) >= min_vote_count
             ):
                 if not feature_film_genre_ids.isdisjoint(set(credit["genre_ids"])):
-                    title = self.add_formatted_credit(
-                        credit, formatted_credits, seen_titles
-                    )
+                    self.add_formatted_credit(credit, formatted_credits, seen_titles)
 
-        # Process crew credits, particularly for directing
+        # Process crew credits for directors, writers, and DoPs
         for credit in combined_credits.get("crew", []):
             if (
-                credit.get("job") == "Director"
+                credit.get("job") in ["Director", "Writer", "Director of Photography"]
                 and "release_date" in credit
-                and credit.get("vote_count", 0) >= min_vote_count
             ):
-                title = self.add_formatted_credit(
-                    credit, formatted_credits, seen_titles
-                )
+                if credit.get("vote_count", 0) >= min_vote_count:
+                    self.add_formatted_credit(credit, formatted_credits, seen_titles)
 
-        # Sort by release year in descending order
         return sorted(
             formatted_credits,
             key=lambda x: (x["release_year"], -x.get("popularity", 0)),
@@ -303,7 +348,6 @@ class MovieDataBuilder:
         )
 
     async def get_movie_card_details(self, tmdb_id):
-        cache_key = f"movie_card_{tmdb_id}"
         cached_data = self.get_from_cache(tmdb_id, is_movie=True)
 
         if cached_data:
@@ -446,10 +490,13 @@ class MovieDataBuilder:
             return None
 
     def get_crew_member(self, credits, job_title):
-        for crew_member in credits["crew"]:
-            if crew_member["job"] == job_title:
-                return crew_member["name"]
-        return "Not Available"
+        members = [
+            {"name": member["name"], "person_id": member["id"]}
+            for member in credits["crew"]
+            if member["job"] == job_title
+        ]
+        logging.info(f"Filtered {job_title}(s): {members}")
+        return members if members else [{"name": "Not Available", "person_id": None}]
 
     async def get_person_details(self, name):
         """
@@ -660,7 +707,6 @@ class MovieDataBuilder:
         people = set()  # Use a set to avoid duplicates
 
         # Extract the director(s), DoP(s), writer(s), and actor(s)
-        # Ensure each entry is a string before adding to the set
         if movie_details.get("director"):
             director = movie_details.get("director")
             if isinstance(director, dict) and "name" in director:
@@ -912,7 +958,7 @@ class MovieDataBuilder:
                 f"{movie_title}: Error occurred while processing person: {star_name}, Error: {e}"
             )
 
-    def get_main_actors(self, credits, count=5):
+    def get_main_actors(self, credits, count=15):
         actors = [
             {"name": member["name"], "person_id": member["id"]}
             for member in credits.get("cast", [])
@@ -921,11 +967,11 @@ class MovieDataBuilder:
 
     def get_top_writers(self, credits, count=5):
         writers = [
-            member["name"]
+            {"name": member["name"], "person_id": member["id"]}
             for member in credits["crew"]
             if member["department"] == "Writing"
         ][:count]
-        return ", ".join(writers) if writers else "Not Available"
+        return writers if writers else [{"name": "Not Available", "person_id": None}]
 
 
 # Usage example with DataManager and ConfigManager instances
