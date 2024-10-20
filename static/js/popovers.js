@@ -310,18 +310,14 @@ export function setupPopoverHideWithDelay(element) {
         </div>
         <div class="movie-div">
           <div class="movie-info">       
-            <p class="movie-director"><strong>Director: </strong>${createPersonSpans(
-              data.director.split(","),
-              "director"
-            )}</p>
-            <p class="movie-dop"><strong>DoP: </strong>${createPersonSpans(
-              data.dop.split(","),
-              "dop"
-            )}</p>
-            <p class="movie-writers"><strong>Writers: </strong>${createPersonSpans(
-              data.writers.split(","),
-              "writers"
-            )}</p>
+            <p class="movie-director"><strong>Director: </strong>${
+              data.director
+            }</p>
+            <p class="movie-dop"><strong>DoP: </strong>${data.dop}</p>
+            <p class="movie-writers"><strong>Writers: </strong>${
+              data.writers
+            }</p>
+
             <p class="movie-stars"><strong>Stars: </strong>${createPersonSpans(
               data.stars.split(","),
               "stars"
