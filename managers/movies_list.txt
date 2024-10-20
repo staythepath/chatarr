@@ -1,14 +1,14 @@
 Inception
+Pulp Fiction
+The Matrix
+The Godfather
 The Dark Knight
 Interstellar
 Dunkirk
 Tenet
-Pulp Fiction
-The Godfather
 The Shawshank Redemption
 Fight Club
 Forrest Gump
-The Matrix
 Gladiator
 Jurassic Park
 Schindler's List
@@ -100,3 +100,103 @@ War Horse
 Bridge of Spies
 Catch Me If You Can
 Into the Wild
+Metropolis
+The Cabinet of Dr. Caligari
+Nosferatu
+The General
+The Gold Rush
+Sunrise: A Song of Two Humans
+The Phantom of the Opera
+Battleship Potemkin
+The Jazz Singer
+Safety Last!
+Gone with the Wind
+The Wizard of Oz
+King Kong
+City Lights
+M
+Snow White and the Seven Dwarfs
+Frankenstein
+Duck Soup
+Stagecoach
+All Quiet on the Western Front
+Casablanca
+It's a Wonderful Life
+Citizen Kane
+The Third Man
+Notorious
+Double Indemnity
+The Maltese Falcon
+The Treasure of the Sierra Madre
+Bambi
+The Red Shoes
+Sunset Boulevard
+Rear Window
+Ben-Hur
+On the Waterfront
+Seven Samurai
+Vertigo
+Singin' in the Rain
+12 Angry Men
+Some Like It Hot
+Rebel Without a Cause
+Lawrence of Arabia
+Psycho
+2001: A Space Odyssey
+The Graduate
+Dr. Strangelove
+Once Upon a Time in the West
+Bonnie and Clyde
+The Good, the Bad and the Ugly
+Rosemary's Baby
+West Side Story
+Apocalypse Now
+A Clockwork Orange
+Jaws
+Taxi Driver
+Alien
+Chinatown
+Rocky
+The Exorcist
+One Flew Over the Cuckoo's Nest
+Saturday Night Fever
+Blade Runner
+E.T. the Extra-Terrestrial
+Raging Bull
+Blue Velvet
+The Shining
+Raiders of the Lost Ark
+The Thing
+Die Hard
+Do the Right Thing
+Stand by Me
+Se7en
+The Truman Show
+Heat
+The Big Lebowski
+The Sixth Sense
+American History X
+Magnolia
+The Iron Giant
+Good Will Hunting
+Leon: The Professional
+There Will Be Blood
+Spirited Away
+No Country for Old Men
+Children of Men
+The Lives of Others
+City of God
+The Royal Tenenbaums
+Lost in Translation
+The Pianist
+28 Days Later
+The Social Network
+Hereditary
+Birdman
+Mad Max: Fury Road
+Drive
+Moonlight
+The Shape of Water
+Inside Out
+Arrival
+1917

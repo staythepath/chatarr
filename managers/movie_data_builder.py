@@ -168,13 +168,64 @@ class MovieDataBuilder:
             )
             logging.info(f"Added movie to database: {movie_data['title']}")
 
-            # Insert cast (stars) into the 'movie_cast' table
-            for star in movie_data.get("stars", []):
-                if isinstance(star, dict) and "person_id" in star:
-                    # Insert or replace the star into the movie_cast table
+            # Helper function to ensure person exists in the 'people' table
+            def ensure_person_in_people_table(person):
+                if isinstance(person, dict) and "person_id" in person:
+                    # Check if the person already exists in the people table
                     self.db_cursor.execute(
                         """
-                        INSERT OR IGNORE INTO movie_cast
+                        SELECT 1 FROM people WHERE person_id = ?
+                        """,
+                        (person["person_id"],),
+                    )
+                    exists = self.db_cursor.fetchone()
+
+                    # If not exists, insert the person into the people table
+                    if not exists:
+                        self.db_cursor.execute(
+                            """
+                            INSERT INTO people
+                            (person_id, name, biography, birthday, deathday, place_of_birth, profile_path, imdb_id, wiki_url)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            """,
+                            (
+                                person["person_id"],
+                                person.get("name", ""),
+                                person.get("biography", ""),
+                                person.get("birthday", ""),
+                                person.get("deathday", ""),
+                                person.get("place_of_birth", ""),
+                                person.get("profile_path", ""),
+                                person.get("imdb_id", ""),
+                                person.get("wiki_url", ""),
+                            ),
+                        )
+                        logging.info(f"Added person to database: {person['name']}")
+
+            # Normalize the job title to avoid case issues
+            def normalize_job_title(job_title):
+                return job_title.strip().lower()
+
+            # Insert cast (stars) into the 'movie_cast' table
+            for star in movie_data.get("stars", []):
+                ensure_person_in_people_table(
+                    star
+                )  # Ensure person exists in 'people' table
+
+                # Check if the star already exists in the movie_cast table
+                self.db_cursor.execute(
+                    """
+                    SELECT 1 FROM movie_cast WHERE movie_id = ? AND person_id = ? AND role = ?
+                    """,
+                    (movie_data["tmdb_id"], star["person_id"], "Actor"),
+                )
+                exists = self.db_cursor.fetchone()
+
+                if not exists:
+                    # Insert the star into the movie_cast table
+                    self.db_cursor.execute(
+                        """
+                        INSERT INTO movie_cast
                         (movie_id, person_id, role)
                         VALUES (?, ?, ?)
                         """,
@@ -182,51 +233,51 @@ class MovieDataBuilder:
                     )
                     logging.info(f"Added actor to database: {star['name']}")
 
-            # Insert director into the 'movie_crew' table
-            for director in movie_data.get("director", []):
-                if isinstance(director, dict) and "person_id" in director:
-                    # Insert or replace the director into the movie_crew table
-                    self.db_cursor.execute(
-                        """
-                        INSERT OR IGNORE INTO movie_crew
-                        (movie_id, person_id, job)
-                        VALUES (?, ?, ?)
-                        """,
-                        (movie_data["tmdb_id"], director["person_id"], "Director"),
-                    )
-                    logging.info(f"Added director to database: {director['name']}")
+            # Insert crew members (directors, DoP, writers) into the 'movie_crew' table
+            def insert_crew(crew_list, job):
+                normalized_job = normalize_job_title(job)
+                for crew_member in crew_list:
+                    ensure_person_in_people_table(crew_member)
 
-            # Insert DoP into the 'movie_crew' table
-            for dop in movie_data.get("dop", []):
-                if isinstance(dop, dict) and "person_id" in dop:
-                    # Insert or replace the DoP into the movie_crew table
+                    # Check if the crew member already exists in the movie_crew table
                     self.db_cursor.execute(
                         """
-                        INSERT OR IGNORE INTO movie_crew
-                        (movie_id, person_id, job)
-                        VALUES (?, ?, ?)
+                        SELECT 1 FROM movie_crew WHERE movie_id = ? AND person_id = ? AND job = ?
                         """,
                         (
                             movie_data["tmdb_id"],
-                            dop["person_id"],
-                            "Director of Photography",
+                            crew_member["person_id"],
+                            normalized_job,
                         ),
                     )
-                    logging.info(f"Added DOP to database: {dop['name']}")
+                    exists = self.db_cursor.fetchone()
+
+                    if not exists:
+                        # Insert the crew member into the movie_crew table
+                        self.db_cursor.execute(
+                            """
+                            INSERT INTO movie_crew
+                            (movie_id, person_id, job)
+                            VALUES (?, ?, ?)
+                            """,
+                            (
+                                movie_data["tmdb_id"],
+                                crew_member["person_id"],
+                                normalized_job,
+                            ),
+                        )
+                        logging.info(
+                            f"Added {normalized_job} to database: {crew_member['name']}"
+                        )
+
+            # Insert director into the 'movie_crew' table
+            insert_crew(movie_data.get("director", []), "Director")
+
+            # Insert DoP into the 'movie_crew' table
+            insert_crew(movie_data.get("dop", []), "Director of Photography")
 
             # Insert writers into the 'movie_crew' table
-            for writer in movie_data.get("writers", []):
-                if isinstance(writer, dict) and "person_id" in writer:
-                    # Insert or replace the writer into the movie_crew table
-                    self.db_cursor.execute(
-                        """
-                        INSERT OR IGNORE INTO movie_crew
-                        (movie_id, person_id, job)
-                        VALUES (?, ?, ?)
-                        """,
-                        (movie_data["tmdb_id"], writer["person_id"], "Writer"),
-                    )
-                    logging.info(f"Added writer to database: {writer['name']}")
+            insert_crew(movie_data.get("writers", []), "Writer")
 
         else:
             # Insert or replace person details into the 'people' table
@@ -364,11 +415,10 @@ class MovieDataBuilder:
             return {}
 
         imdb_id = await self.get_imdb_id(movie.get("title", ""))
-        director = self.get_crew_members(tmdb_id, "Director")
-        dop = self.get_crew_members(tmdb_id, "Director of Photography")
-        writers = self.get_crew_members(tmdb_id, "Writer")
-        stars = self.get_main_actors(tmdb_id)
-
+        director = self.get_crew_member(credits, "Director")
+        dop = self.get_crew_member(credits, "Director of Photography")
+        writers = self.get_top_writers(credits)
+        stars = self.get_main_actors(credits)
         wiki_url = await self.get_wiki_url(movie.get("title", ""))
 
         movie_card_data = {
@@ -398,40 +448,23 @@ class MovieDataBuilder:
 
     def get_from_cache(self, key, is_movie=True):
         if is_movie:
-            # Fetch movie details
             self.db_cursor.execute("SELECT * FROM movies WHERE tmdb_id = ?", (key,))
             movie = self.db_cursor.fetchone()
             if movie:
-                # Fetch cast (stars)
+                # Fetch cast
                 self.db_cursor.execute(
-                    """
-                    SELECT p.name
-                    FROM movie_cast mc
-                    JOIN people p ON mc.person_id = p.person_id
-                    WHERE mc.movie_id = ? AND mc.role = 'Actor'
-                    """,
+                    "SELECT p.name, mc.role FROM movie_cast mc JOIN people p ON mc.person_id = p.person_id WHERE mc.movie_id = ?",
                     (key,),
                 )
-                cast = [row[0] for row in self.db_cursor.fetchall()]
+                cast = self.db_cursor.fetchall()
 
-                # Fetch crew (director, DoP, writers)
+                # Fetch crew (writers and director)
                 self.db_cursor.execute(
-                    """
-                    SELECT p.name, mc.job
-                    FROM movie_crew mc
-                    JOIN people p ON mc.person_id = p.person_id
-                    WHERE mc.movie_id = ?
-                    """,
+                    "SELECT p.name, mc.job FROM movie_crew mc JOIN people p ON mc.person_id = p.person_id WHERE mc.movie_id = ?",
                     (key,),
                 )
                 crew = self.db_cursor.fetchall()
 
-                # Separate out the director, DoP, and writers
-                director = [name for name, job in crew if job == "Director"]
-                dop = [name for name, job in crew if job == "Director of Photography"]
-                writers = [name for name, job in crew if job == "Writer"]
-
-                # Prepare the movie data
                 return {
                     "tmdb_id": movie[0],
                     "title": movie[1],
@@ -441,10 +474,8 @@ class MovieDataBuilder:
                     "vote_average": movie[5],
                     "imdb_id": movie[6],
                     "wiki_url": movie[7],
-                    "director": ", ".join(director) if director else "Not Available",
-                    "dop": ", ".join(dop) if dop else "Not Available",
-                    "writers": ", ".join(writers) if writers else "Not Available",
-                    "stars": ", ".join(cast) if cast else "Not Available",
+                    "cast": cast,
+                    "crew": crew,
                 }
             return None
         else:
@@ -465,17 +496,14 @@ class MovieDataBuilder:
                 }
             return None
 
-    def get_crew_members(self, movie_id, job_title):
-        self.db_cursor.execute(
-            """
-            SELECT p.name
-            FROM movie_crew mc
-            JOIN people p ON mc.person_id = p.person_id
-            WHERE mc.movie_id = ? AND mc.job = ?
-            """,
-            (movie_id, job_title),
-        )
-        return [row[0] for row in self.db_cursor.fetchall()]
+    def get_crew_member(self, credits, job_title):
+        members = [
+            {"name": member["name"], "person_id": member["id"]}
+            for member in credits["crew"]
+            if member["job"] == job_title
+        ]
+        logging.info(f"Filtered {job_title}(s): {members}")
+        return members if members else [{"name": "Not Available", "person_id": None}]
 
     async def get_person_details(self, name):
         """
@@ -937,51 +965,20 @@ class MovieDataBuilder:
                 f"{movie_title}: Error occurred while processing person: {star_name}, Error: {e}"
             )
 
-    def get_main_actors(self, movie_id, count=15):
-        self.db_cursor.execute(
-            """
-            SELECT p.name
-            FROM movie_cast mc
-            JOIN people p ON mc.person_id = p.person_id
-            WHERE mc.movie_id = ? AND mc.role = 'Actor'
-            LIMIT ?
-            """,
-            (movie_id, count),
-        )
-        return [row[0] for row in self.db_cursor.fetchall()]
+    def get_main_actors(self, credits, count=15):
+        actors = [
+            {"name": member["name"], "person_id": member["id"]}
+            for member in credits.get("cast", [])
+        ][:count]
+        return actors if actors else [{"name": "Not Available", "person_id": None}]
 
-    def get_top_writers(self, movie_id, count=5):
-        # Fetch writers from the 'movie_crew' table
-        self.db_cursor.execute(
-            """
-            SELECT p.name, mc.person_id
-            FROM movie_crew mc
-            JOIN people p ON mc.person_id = p.person_id
-            WHERE mc.movie_id = ? AND mc.job = 'Writer'
-            LIMIT ?
-            """,
-            (movie_id, count),
-        )
+    def get_top_writers(self, credits, count=5):
         writers = [
-            {"name": row[0], "person_id": row[1]} for row in self.db_cursor.fetchall()
-        ]
+            {"name": member["name"], "person_id": member["id"]}
+            for member in credits["crew"]
+            if member["department"] == "Writing"
+        ][:count]
         return writers if writers else [{"name": "Not Available", "person_id": None}]
-
-    def get_dop(self, movie_id):
-        # Fetch DoP from the 'movie_crew' table
-        self.db_cursor.execute(
-            """
-            SELECT p.name, mc.person_id
-            FROM movie_crew mc
-            JOIN people p ON mc.person_id = p.person_id
-            WHERE mc.movie_id = ? AND mc.job = 'Director of Photography'
-            """,
-            (movie_id,),
-        )
-        dop = [
-            {"name": row[0], "person_id": row[1]} for row in self.db_cursor.fetchall()
-        ]
-        return dop if dop else [{"name": "Not Available", "person_id": None}]
 
 
 # Usage example with DataManager and ConfigManager instances
